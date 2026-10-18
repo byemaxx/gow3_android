@@ -2,7 +2,7 @@ name: Android bridge regressions
 
 on:
   push:
-    branches: [fix/android-vibration-audio]
+    branches: [android]
   workflow_dispatch:
 
 permissions:

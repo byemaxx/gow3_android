@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Parity gate for the C++ game-preparation port (android-launcher/app/src/main/jni/gow3prepare)
+# Parity gate for the C++ game-preparation port (android-launcher/app/src/main/cpp/gow3prepare)
 # against the Python reference (scripts/*.py), which stays the behaviour baseline.
 #
 # Both sides read the same XML (through tools/migration/make_patch_input.py) and are given the same
@@ -42,9 +42,9 @@ work=$(mktemp -d)
 # --- the C++ side, built for the host: no NDK needed to run the parity check
 binary=$work/gow3_golden
 clang++ -std=c++17 -O1 -Wall -Wextra -Wno-unused-parameter \
-    -I "$root/android-launcher/app/src/main/jni/gow3prepare" \
+    -I "$root/android-launcher/app/src/main/cpp/gow3prepare" \
     "$root/tools/migration/gow3_prepare_golden.cpp" \
-    "$root/android-launcher/app/src/main/jni/gow3prepare/gow3_prepare.cpp" \
+    "$root/android-launcher/app/src/main/cpp/gow3prepare/gow3_prepare.cpp" \
     -o "$binary" || { echo "the parity test does not build" >&2; exit 1; }
 
 input=$work/input.txt

@@ -282,6 +282,54 @@ static int64_t save_list_timeout(void) {
     int64_t seconds = env && *env ? atoll(env) : 300;
     return seconds > 0 ? seconds : 300;
 }
+/* Param.title / Param.subtitle 的定长字段宽度(runtime_savedata.c 的 OrbisSaveDataParam 布局)。 */
+#define SAVE_TEXT_FIELD 128
+/* 存档对话框只显示前 60 字节,再多会挤掉存档图片那一列。 */
+#define SAVE_TEXT_SHOWN 60
+/* 存档的标题和副标题由游戏按它自己的语言写入这些定长字段,可能是 UTF-8,也可能是别的编码或
+ * 干脆是二进制。渲染层按 UTF-8 解释字节,遇到非法序列只会显示方块或空白。这里只判定合法性,
+ * 不做转码:猜错编码会把一段可读文本换成另一段错误文本,比回退更难排查。 */
+static int utf8_field_ok(const char *field, size_t limit) {
+    const unsigned char *p = (const unsigned char *)field;
+    for (size_t i = 0; i < limit && p[i]; ) {
+        unsigned char c = p[i], lo = 0x80, hi = 0xBF;   /* 第二个字节的合法区间 */
+        size_t need;
+        if (c < 0x80) { ++i; continue; }
+        else if (c >= 0xC2 && c <= 0xDF) need = 1;
+        else if (c == 0xE0) { need = 2; lo = 0xA0; }                    /* 排除过长编码 */
+        else if (c == 0xED) { need = 2; hi = 0x9F; }                    /* 排除代理区 U+D800..DFFF */
+        else if (c >= 0xE1 && c <= 0xEF) need = 2;
+        else if (c == 0xF0) { need = 3; lo = 0x90; }                    /* 排除过长编码 */
+        else if (c == 0xF4) { need = 3; hi = 0x8F; }                    /* 排除超过 U+10FFFF */
+        else if (c >= 0xF1 && c <= 0xF3) need = 3;
+        else return 0;                                /* 孤立续字节、C0/C1、F5..FF */
+        if (i + need >= limit) return 0;              /* 序列超出字段边界 */
+        if (p[i+1] < lo || p[i+1] > hi) return 0;
+        for (size_t k = 2; k <= need; ++k) if (p[i+k] < 0x80 || p[i+k] > 0xBF) return 0;
+        i += need + 1;
+    }
+    return 1;
+}
+/* 已通过 utf8_field_ok 的文本里,不超过 limit 字节、且不切开多字节序列的最长前缀。 */
+static size_t utf8_prefix(const char *text, size_t limit) {
+    const unsigned char *p = (const unsigned char *)text;
+    size_t i = 0;
+    while (i < limit && p[i]) {
+        unsigned char c = p[i];
+        size_t need = c < 0x80 ? 0 : c < 0xE0 ? 1 : c < 0xF0 ? 2 : 3;
+        if (i + need >= limit) break;                 /* 放不下整个字符就停在这里 */
+        i += need + 1;
+    }
+    return i;
+}
+/* 渲染层因此永远只拿到合法 UTF-8:空字段或非法时退回目录名(副标题退回空串)。 */
+static void save_text(char *out, size_t size, const char *name, const char *field,
+                      const char *dir, const char *fallback) {
+    if (!field[0]) { snprintf(out,size,"%s",fallback); return; }
+    if (utf8_field_ok(field,SAVE_TEXT_FIELD)) { snprintf(out,size,"%.*s",(int)(SAVE_TEXT_FIELD-1),field); return; }
+    printf("Runtime: SaveDataDialog: %s of %s is not valid UTF-8, using the directory name\n",name,dir);
+    snprintf(out,size,"%s",fallback);
+}
 static char save_labels[33][200], save_icons[33][720];
 static void save_label(char *out, size_t size, const char *dir) {
     unsigned char param[RUNTIME_SAVE_PARAM_SIZE];
@@ -294,9 +342,13 @@ static void save_label(char *out, size_t size, const char *dir) {
     localtime_r(&t,&tm);
 #endif
     char when[32]; strftime(when,sizeof(when),"%Y-%m-%d %H:%M",&tm);
-    const char *title=(const char *)param, *subtitle=(const char *)param+128;
-    /* Title, subtitle and date on their own lines, beside the save's picture. */
-    snprintf(out,size,"%.60s\n%.60s%s%s",title[0] ? title : dir,subtitle,subtitle[0] ? "\n" : "",when);
+    char title[SAVE_TEXT_FIELD], subtitle[SAVE_TEXT_FIELD];
+    save_text(title,sizeof(title),"title",(const char *)param,dir,dir);
+    save_text(subtitle,sizeof(subtitle),"subtitle",(const char *)param+SAVE_TEXT_FIELD,dir,"");
+    /* Title, subtitle and date on their own lines, beside the save's picture.
+     * 截断点必须落在字符边界上,否则 %.*s 会从中间切开多字节序列,校验过的文本又变回非法。 */
+    size_t head=utf8_prefix(title,SAVE_TEXT_SHOWN), tail=utf8_prefix(subtitle,SAVE_TEXT_SHOWN);
+    snprintf(out,size,"%.*s\n%.*s%s%s",(int)head,title,(int)tail,subtitle,tail ? "\n" : "",when);
 }
 static ABI int32_t save_init(void) { return dialog_init(2); }
 static ABI int32_t save_open(const unsigned char *p) {

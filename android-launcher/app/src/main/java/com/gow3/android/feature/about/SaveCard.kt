@@ -1,5 +1,9 @@
 package com.gow3.android.feature.about
 
+import com.gow3.android.ui.components.ActionButton
+
+import com.gow3.android.ui.components.LauncherColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,8 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
 
 /** 将玩家的 God of War III 存档备份为 zip，并在带安全备份的情况下恢复一个备份。 */
 @Composable

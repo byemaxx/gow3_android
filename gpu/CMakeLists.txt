@@ -201,6 +201,8 @@ if (ANDROID)
     # （dispatcher 的布局依赖它们）。
     target_compile_definitions(gow3gpu PRIVATE VK_USE_PLATFORM_ANDROID_KHR)
     target_include_directories(gow3gpu PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../tools/android/present)
+    # 帧生成引擎 C API（tools/android/lsfg/gow3_lsfg_api.h，change add-native-frame-generation）
+    target_include_directories(gow3gpu PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../tools/android/lsfg)
     target_link_libraries(gow3gpu PRIVATE nativewindow)
     # FFmpeg 的 arm64 汇编用 adrp/add 寻址自己的表：它的符号在共享对象内不能被抢占。
     target_link_options(gow3gpu PRIVATE

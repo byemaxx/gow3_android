@@ -1,5 +1,16 @@
 package com.gow3.android.feature.settings
 
+import com.gow3.android.ui.components.ActionButton
+
+import com.gow3.android.data.Gow3Data
+import com.gow3.android.data.driver.DriverDeleteResult
+import com.gow3.android.data.driver.DriverEntry
+import com.gow3.android.data.driver.DriverInstallFailure
+import com.gow3.android.data.driver.DriverInstallResult
+import com.gow3.android.data.driver.DriverInstaller
+import com.gow3.android.data.driver.DriverManager
+import com.gow3.android.ui.components.LauncherColors
+
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,15 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
-import com.gow3.android.data.DriverDeleteResult
-import com.gow3.android.data.DriverEntry
-import com.gow3.android.data.DriverInstallFailure
-import com.gow3.android.data.DriverInstallResult
-import com.gow3.android.data.DriverManager
-import com.gow3.android.data.DriverInstaller
-import com.gow3.android.data.Gow3Data
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

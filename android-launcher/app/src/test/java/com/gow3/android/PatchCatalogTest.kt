@@ -1,10 +1,12 @@
 package com.gow3.android
 
+import com.gow3.android.core.settings.Gow3Settings
 import com.gow3.android.data.CatalogProblem
 import com.gow3.android.data.PatchCatalog
 import com.gow3.android.data.PatchCatalogException
-import com.gow3.android.data.Gow3Ini
-import com.gow3.android.data.LaunchParams
+import com.gow3.android.data.model.LaunchParams
+import com.gow3.android.data.model.MobilePresets
+
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -46,8 +48,8 @@ class PatchCatalogTest {
         var ini = native + c.toggle(native, bloom, true)
         ini += c.toggle(ini, fix, true)
         val file = temp.newFile("gow3.ini")
-        assertTrue(Gow3Ini.write(file, ini))
-        assertEquals(setOf(bloom.name, fix.name), c.selected(Gow3Ini.read(file)))
+        assertTrue(Gow3Settings.update(file, ini))
+        assertEquals(setOf(bloom.name, fix.name), c.selected(Gow3Settings.read(file)))
         ini += c.toggle(ini, bloom, false)
         ini += c.toggle(ini, fix, false)
         assertEquals("", ini[c.selectionKey])
@@ -60,6 +62,29 @@ class PatchCatalogTest {
         assertTrue(c.selected(native + (c.selectionKey to "")).isEmpty())
         assertFalse(c.selected(native + ("patches_CUSA01740_01_00" to "")).isEmpty())
         assertFalse(c.selected(native + ("patches_CUSA01715_01_00" to "")).isEmpty())
+    }
+
+    @Test fun `skip animations toggle enables and disables both skip patches`() {
+        val c = catalog()
+        assertEquals(setOf("Skip Intro", "Skip Any Video With X Button"), c.skipVideoPatches.map { it.name }.toSet())
+        var ini = native + c.toggleAll(native, c.skipVideoPatches, true)
+        assertEquals(c.skipVideoPatches.map { it.name }.toSet(), c.selected(ini))
+        assertEquals("0", ini["restart_unconfirmed"])
+        ini += c.toggleAll(ini, c.skipVideoPatches, false)
+        assertTrue(c.selected(ini).isEmpty())
+    }
+
+    @Test fun `skip animations toggle keeps unrelated patches and re-enables both after partial off`() {
+        val c = catalog()
+        val bloom = c.patches.first { it.name == "Disable Bloom" }
+        var ini = native + c.toggle(native, bloom, true)
+        ini += c.toggleAll(ini, c.skipVideoPatches, true)
+        assertEquals(setOf(bloom.name) + c.skipVideoPatches.map { it.name }.toSet(), c.selected(ini))
+        // 玩家在补丁页单独关掉其一 → 开关回落为关；重新打开则两个一起启用。
+        ini += c.toggle(ini, c.patches.first { it.name == "Skip Intro" }, false)
+        assertFalse(c.skipVideoPatches.all { it.name in c.selected(ini) })
+        ini += c.toggleAll(ini, c.skipVideoPatches, true)
+        assertEquals(setOf(bloom.name) + c.skipVideoPatches.map { it.name }.toSet(), c.selected(ini))
     }
 
     @Test fun `texture fix and resolution replace each other and fps switches stay exclusive`() {
@@ -109,15 +134,15 @@ class PatchCatalogTest {
         val resolution = LaunchParams.forCatalog(c).first { it.key == "render_resolution" }
         val file = temp.newFile("shared.ini")
         for (option in resolution.options) {
-            assertTrue(Gow3Ini.write(file, native + ("render_resolution" to option.value)))
-            val ini = Gow3Ini.read(file)
+            assertTrue(Gow3Settings.update(file, native + ("render_resolution" to option.value)))
+            val ini = Gow3Settings.read(file)
             val patch = c.patches.firstOrNull { it.resolution == option.value }
             assertEquals(setOfNotNull(patch?.name), c.selected(ini))
             if (patch != null) {
-                assertTrue(Gow3Ini.write(file, c.toggle(ini, patch, false)))
-                assertEquals("native", LaunchParams.selectedOption(Gow3Ini.read(file), resolution)?.value)
-                assertTrue(Gow3Ini.write(file, c.toggle(Gow3Ini.read(file), patch, true)))
-                assertEquals(option.value, LaunchParams.selectedOption(Gow3Ini.read(file), resolution)?.value)
+                assertTrue(Gow3Settings.update(file, c.toggle(ini, patch, false)))
+                assertEquals("native", LaunchParams.selectedOption(Gow3Settings.read(file), resolution)?.value)
+                assertTrue(Gow3Settings.update(file, c.toggle(Gow3Settings.read(file), patch, true)))
+                assertEquals(option.value, LaunchParams.selectedOption(Gow3Settings.read(file), resolution)?.value)
             }
         }
     }
@@ -187,7 +212,7 @@ class PatchCatalogTest {
         assertEquals(14, loaded.patches.size)
         assertEquals(catalog().patches.map { it.name }, loaded.patches.map { it.name })
         assertTrue(loaded.patches.all { it.validation == "offline-matched" })
-        assertEquals(4, com.gow3.android.data.MobilePresets.available(loaded).size)
+        assertEquals(5, com.gow3.android.data.model.MobilePresets.available(loaded).size)
         assertTrue(loaded.selected(native + ("patches_CUSA01740_01_00" to "Skip Intro")).isEmpty())
         assertEquals(setOf("Skip Intro"), loaded.selected(native + (loaded.selectionKey to "Skip Intro")))
     }

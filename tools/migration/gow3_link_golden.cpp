@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// Parity gate for the C++ boot-image port (android-launcher/app/src/main/jni/gow3link) against
+// Parity gate for the C++ boot-image port (android-launcher/app/src/main/cpp/gow3link) against
 // the Python reference (scripts/prepare.py, scripts/link_modules.py).
 //
 // Rebuilds boot.bin (G3PROBE2) and boot-linked.bin (G3PROBE5) from the same game and compares

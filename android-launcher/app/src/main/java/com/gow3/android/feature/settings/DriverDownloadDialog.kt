@@ -1,5 +1,21 @@
 package com.gow3.android.feature.settings
 
+import com.gow3.android.ui.components.formatBytes
+
+import com.gow3.android.core.settings.GamePrefs
+import com.gow3.android.data.driver.DriverAsset
+import com.gow3.android.data.driver.DriverDownloadResult
+import com.gow3.android.data.driver.DriverDownloader
+import com.gow3.android.data.driver.DriverInstallResult
+import com.gow3.android.data.driver.DriverInstaller
+import com.gow3.android.data.driver.DriverProxy
+import com.gow3.android.data.driver.DriverRelease
+import com.gow3.android.data.driver.DriverReleaseClient
+import com.gow3.android.data.driver.DriverReleaseResult
+import com.gow3.android.data.driver.DriverSource
+import com.gow3.android.data.driver.DriverSourceCatalog
+import com.gow3.android.ui.components.LauncherColors
+
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -38,20 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.gow3.android.R
-import com.gow3.android.data.DriverAsset
-import com.gow3.android.data.DriverDownloadResult
-import com.gow3.android.data.DriverDownloader
-import com.gow3.android.data.DriverInstallResult
-import com.gow3.android.data.DriverInstaller
-import com.gow3.android.data.DriverProxy
-import com.gow3.android.data.DriverRelease
-import com.gow3.android.data.DriverReleaseClient
-import com.gow3.android.data.DriverReleaseResult
-import com.gow3.android.data.DriverSource
-import com.gow3.android.data.DriverSourceCatalog
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
-import com.gow3.android.ui.components.formatBytes
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,15 +63,11 @@ import kotlinx.coroutines.withContext
 
 /** 「已下载」标记的持久化：记录成功安装过的资产下载 URL（spec：资产列表的已下载标记）。 */
 private object DownloadedMarks {
-    const val PREF_KEY = "driver_downloaded_urls"
-
     fun read(context: android.content.Context): Set<String> =
-        context.getSharedPreferences("gow3", android.content.Context.MODE_PRIVATE)
-            .getStringSet(PREF_KEY, emptySet()).orEmpty()
+        GamePrefs(context).downloadedDriverUrls()
 
     fun mark(context: android.content.Context, url: String) {
-        val prefs = context.getSharedPreferences("gow3", android.content.Context.MODE_PRIVATE)
-        prefs.edit().putStringSet(PREF_KEY, prefs.getStringSet(PREF_KEY, emptySet()).orEmpty() + url).apply()
+        GamePrefs(context).markDriverUrlDownloaded(url)
     }
 }
 
@@ -369,7 +367,7 @@ private fun DriverSourceSection(
 
 @Composable
 private fun DriverAssetRow(
-    release: com.gow3.android.data.DriverRelease,
+    release: DriverRelease,
     asset: DriverAsset,
     downloaded: Boolean,
     downloadEnabled: Boolean,

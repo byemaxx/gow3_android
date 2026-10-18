@@ -71,7 +71,7 @@ public class Log {
  public static int d(String tag,String text){return 0;}
  public static int w(String tag,String text){return 0;}
 }''',
-    'ro/cobrabm/fexdroid/AudioBridgeRegression.java': '''package ro.cobrabm.fexdroid;
+    'com/gow3/android/game/AudioBridgeRegression.java': '''package com.gow3.android.game;
 import android.media.AudioTrack;
 import java.io.*;
 import java.util.function.BooleanSupplier;
@@ -129,11 +129,11 @@ def main():
             target = work / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding='utf-8')
-        production = ROOT / 'android-launcher/app/src/main/java/ro/cobrabm/fexdroid/AudioBridge.java'
+        production = ROOT / 'android-launcher/app/src/main/java/com/gow3/android/game/AudioBridge.java'
         subprocess.run([str(java_home/'bin'/('javac'+suffix)), '-d', str(work),
                         *[str(work/name) for name in SOURCES], str(production)], check=True)
         subprocess.run([str(java_home/'bin'/('java'+suffix)), '-cp', str(work),
-                        'ro.cobrabm.fexdroid.AudioBridgeRegression', str(work)], check=True)
+                        'com.gow3.android.game.AudioBridgeRegression', str(work)], check=True)
 
 
 if __name__ == '__main__':

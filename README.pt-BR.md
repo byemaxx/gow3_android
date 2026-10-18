@@ -118,7 +118,7 @@ dependências e os passos estão em [docs/QUICKSTART.md](docs/QUICKSTART.md).
 | GPU | `gpu/shadps4/` | O núcleo de vídeo do shadPS4, que traduz os comandos da GPU do PS4 para Vulkan, com as otimizações deste port (cache de shaders em segundo plano, leituras adiadas) |
 | Menu do jogo | `gpu/shim/gow3_overlay.cpp` | Menu e contador de desempenho em Dear ImGui; configurações em `gpu/shim/gow3_settings.cpp` |
 | Patches | `patches/God_of_War_III_Remastered.xml`, `scripts/patches.py` | Aplicados na memória ao iniciar, sem alterar os arquivos do jogo |
-| Inicialização | Launcher Android (`android-launcher/`), `run.sh` | No Android o launcher prepara a imagem e inicia o `gow3-probe`; `run.sh` é a entrada da versão desktop |
+| Inicialização | `android-launcher/` | No Android o launcher prepara a imagem e inicia o `gow3-probe` |
 
 Mais documentação: [mods](docs/MODS.md), [mapa do quadro e upscaler](docs/upscaler.md),
 [trabalho paralelo da GPU](docs/parallel_gpu.md) e o [roadmap](docs/gow3/ROADMAP.md).

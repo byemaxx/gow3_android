@@ -1,5 +1,8 @@
 package com.gow3.android.data
 
+import com.gow3.android.data.model.ProjectRepo
+
+
 import com.gow3.android.R
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
@@ -7,12 +10,14 @@ import java.net.URL
 import org.json.JSONObject
 
 /**
- * Android 发布的版本串：God of War III 的 PC 上游版本号（点分数字）加 Android 发布序号。
+ * Android 发布的版本串：God of War III 的 PC 上游版本号（点分数字）加发布序号。
  *
- * GitHub 上表现为 tag `v<PC版本>-android<N>`，APK 内表现为去掉 `v` 的同一串 `versionName`
- * （`tools/android/release_local.sh:263-264` 的 `version=${android_tag#v}`）。序号由
- * `tools/android/release_local.sh:168-176`（`next_android_tag`）在目标仓库已有 tag 上取最大值加一，
- * 因此单调递增。该形态是发布流水线的契约：发布脚本一旦改用别的 tag 形态，本类必须同步。
+ * GitHub 上表现为 tag，APK 内表现为去掉 `v` 的同一串 `versionName`
+ * （`tools/android/release_local.sh` 的 `version=${android_tag#v}`）。序号由
+ * `next_android_tag` 在目标仓库已有 tag 上取最大值加一，因此单调递增。
+ * bionic 管线起 tag 形态为 `v<PC版本>-bionic-v<N>`（如 `v2.1.7-bionic-v1`）；
+ * 旧的 `v<PC版本>-android<N>`（如 `v2.1.6-android3`）仍需解析，用于比较历史 release。
+ * 该形态是发布流水线的契约：发布脚本一旦改用别的 tag 形态，本类必须同步。
  *
  * 解析刻意要求整串匹配（[Regex.matchEntire]）：像 `0.5.2-kotlin`（debug 占位版本）或
  * `v2.1.6-android3-rc1` 这样的串解析失败并落到「无法比较」，而不是被误判成可比较版本。
@@ -20,6 +25,7 @@ import org.json.JSONObject
 internal data class AndroidReleaseVersion(
     val upstream: List<Long>,
     val androidRevision: Long,
+    val bionic: Boolean = false,
 ) : Comparable<AndroidReleaseVersion> {
 
     /** 先逐段按数字比上游版本号（位数不足补 0），相等后再比 Android 发布序号。 */
@@ -32,10 +38,12 @@ internal data class AndroidReleaseVersion(
         return androidRevision.compareTo(other.androidRevision)
     }
 
-    override fun toString(): String = upstream.joinToString(".") + "-android" + androidRevision
+    /** 规范往返形态：android 家族为 `-android<N>`，bionic 家族为 `-bionic-v<N>`。 */
+    override fun toString(): String =
+        upstream.joinToString(".") + if (bionic) "-bionic-v$androidRevision" else "-android$androidRevision"
 
     companion object {
-        private val PATTERN = Regex("v?(\\d+(?:\\.\\d+)*)-android(\\d+)")
+        private val PATTERN = Regex("v?(\\d+(?:\\.\\d+)*)-(android|bionic)(?:-v)?(\\d+)")
 
         /** 解析 release tag 或 `versionName`；形态不符时返回 null 而不是抛异常。 */
         fun parse(raw: String?): AndroidReleaseVersion? {
@@ -43,8 +51,8 @@ internal data class AndroidReleaseVersion(
             val upstream = match.groupValues[1].split('.').map { segment ->
                 segment.toLongOrNull() ?: return null
             }
-            val revision = match.groupValues[2].toLongOrNull() ?: return null
-            return AndroidReleaseVersion(upstream, revision)
+            val revision = match.groupValues[3].toLongOrNull() ?: return null
+            return AndroidReleaseVersion(upstream, revision, bionic = match.groupValues[2] == "bionic")
         }
     }
 }

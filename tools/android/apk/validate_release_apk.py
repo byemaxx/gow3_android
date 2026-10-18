@@ -18,7 +18,7 @@ import zipfile
 from pathlib import Path
 
 APPLICATION_ID = 'com.gow3.android.bionic'
-JAVA_PACKAGE = 'ro/cobrabm/fexdroid'
+JAVA_PACKAGE = 'com/gow3/android/game'
 REQUIRED_LIBS = ('lib/arm64-v8a/libgow3prepare.so', 'lib/arm64-v8a/libgow3present.so')
 FORBIDDEN_LIBS = ('lib/arm64-v8a/libfxdisplay.so', 'lib/arm64-v8a/libfxio.so')
 GAME_CONTENT = ('eboot.bin', 'sce_module', 'sce_sys', 'boot-linked.bin')

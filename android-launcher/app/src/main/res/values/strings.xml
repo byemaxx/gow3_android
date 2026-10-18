@@ -42,7 +42,7 @@
     <string name="param_frames_queued">Frames queued</string>
     <string name="param_sharpen">Sharpening</string>
     <string name="param_sharpness">Sharpening strength</string>
-    <string name="param_show_fps">Show FPS</string>
+    <string name="param_display_stretch">Stretch to fullscreen</string>
 
     <!-- 启动参数：选项名 -->
     <string name="param_option_off_720p">Off (render at 1280×720)</string>
@@ -93,6 +93,7 @@
     <string name="home_patch_unavailable">No matching patch catalog. Check the game and update folders to enable resolution and engine frame rate settings. See Patches for details.</string>
     <string name="home_patch_unavailable_value">%1$s (unavailable for this version)</string>
     <string name="mobile_preset_title">DEFAULT PROFILE</string>
+    <string name="mobile_preset_480p">480p · Lowest GPU load</string>
     <string name="mobile_preset_light">540p · Lower GPU load</string>
     <string name="mobile_preset_balanced">720p · Balanced</string>
     <string name="mobile_preset_clear">900p · Sharper image</string>
@@ -100,13 +101,59 @@
     <string name="mobile_preset_custom">Custom</string>
     <string name="mobile_preset_unavailable">No compatible profile</string>
     <string name="mobile_preset_description">Tap a profile to apply its resolution, a 60 FPS target, and mobile graphics defaults. Disables SSAO, motion blur, depth of field, bloom, soft particles and dynamic shadows; enables intro skipping and X to skip videos. You can then adjust each setting here or in Patches. Experimental profiles: results depend on your phone. Changes take effect on the next launch.</string>
+
+    <!-- 首页游戏身份卡（redesign-android-launcher-home） -->
+    <string name="home_identity_patches_loaded_fmt">Patches loaded · %1$d available</string>
+    <string name="home_identity_problem_title">Game info unavailable</string>
+    <string name="home_problem_no_game">Select your game folder in Settings → GENERAL to start.</string>
+    <string name="home_problem_invalid_game">The selected folder has no eboot.bin or readable game info.</string>
+    <string name="home_problem_invalid_update">The update patch folder is invalid or does not match the game.</string>
+    <string name="home_problem_unsupported">This game (TITLE ID) is not supported.</string>
+    <string name="home_problem_version">The game version does not match the patch catalog.</string>
+    <string name="home_problem_read_failed">Could not read the game folder. Check the path and storage permission.</string>
+    <string name="home_identity_open_storage">OPEN SETTINGS · GENERAL  ›</string>
+
+    <!-- 首页预设分段选择器 -->
+    <string name="preset_caption_custom">Custom — settings no longer match any preset</string>
+    <string name="preset_disabled_no_catalog">No compatible presets — check the game and update folders in Settings → GENERAL.</string>
+
+    <!-- 首页 GPU 驱动底部面板 -->
+    <string name="driver_sheet_title">GPU DRIVER</string>
+    <string name="driver_sheet_manage">MANAGE DRIVERS · DOWNLOAD / DELETE  ›</string>
+
+    <!-- 首页用户/存档区（占位：多用户能力随 add-android-launcher-user-profiles 落地） -->
+    <string name="user_zone_title">PLAYER</string>
+    <string name="user_zone_default_name">Hunter</string>
+    <string name="user_zone_saves_ready">Save data ready</string>
+    <string name="user_zone_saves_empty">No saves yet</string>
+    <string name="user_zone_note">Profiles and save management arrive in a future update.</string>
+
+    <!-- 首启游戏选择页（一次性硬门控） -->
+    <string name="first_run_title">SELECT YOUR GAME</string>
+    <string name="first_run_subtitle">Point the launcher to your game files to begin.</string>
+    <string name="first_run_game_folder">GAME FOLDER</string>
+    <string name="first_run_update_folder">UPDATE PATCH FOLDER</string>
+    <string name="first_run_required">REQUIRED</string>
+    <string name="first_run_optional">OPTIONAL</string>
+    <string name="first_run_tap_to_select">Tap to select</string>
+    <string name="first_run_update_desc">Optional: the update (patch) folder of the game, e.g. CUSA01740-patch, laid over the game at start.</string>
+    <string name="first_run_confirm">CONFIRM</string>
+    <string name="first_run_confirm_locked">Select a game folder first</string>
+
+    <!-- 设置存储分类（首启之后目录修改的常驻位置） -->
+    <string name="storage_section_title">GAME FOLDERS</string>
+    <string name="storage_valid">VALID</string>
+    <string name="storage_game_desc">Tap to choose the extracted game folder (must contain eboot.bin).</string>
+    <string name="storage_update_desc">Optional: the update (patch) folder laid over the game at start.</string>
     <string name="param_desc_vsync">Syncs the game\'s frames with your screen\'s refresh rate to stop visual tearing. Leave it ON unless you see tearing or stutter.</string>
     <string name="param_desc_frames_queued">How many frames the game prepares ahead of what the screen shows. Lower numbers cut input lag; higher numbers can improve smoothness on weaker hardware.</string>
     <string name="param_desc_anisotropy">Sharpens floors and walls viewed at an angle. Higher values may use a little more GPU bandwidth. Takes effect on the next launch.</string>
     <string name="param_desc_vibration">Scales vibration on supported gamepads, or on the phone when gamepad vibration is unavailable. 0% disables vibration. Strength control depends on device support.</string>
     <string name="param_desc_sharpen">Applies an RCAS sharpening pass after FSR upscaling. Has no effect while the upscaler is OFF.</string>
     <string name="param_desc_sharpness">Strength of the sharpening pass (0.00–2.00). Only used when sharpening is ON.</string>
-    <string name="param_desc_show_fps">Shows a frames-per-second overlay while the game is running.</string>
+    <string name="param_desc_display_stretch">Stretches the picture to fill the whole screen, ignoring the aspect ratio (removes the side black bars on wide screens). The image will look horizontally stretched. Takes effect on the next launch.</string>
+    <string name="param_skip_animations">Skip animations</string>
+    <string name="param_desc_skip_animations">Skips the intro logos and opening videos, and lets you skip any in-game video with the X button. Same switches as the Patches page.</string>
 
     <!-- Settings 页 -->
     <string name="settings_title">SETTINGS</string>
@@ -114,6 +161,7 @@
     <string name="settings_no_settings">No settings in this category yet. More categories will arrive in future updates.</string>
 
     <!-- Settings 页分类（分类栏顺序与 LaunchCategory 枚举声明顺序一致） -->
+    <string name="param_category_general">GENERAL</string>
     <string name="param_category_graphics">GRAPHICS</string>
     <string name="param_category_performance">PERFORMANCE</string>
     <string name="param_category_controls">CONTROLS</string>
@@ -130,6 +178,16 @@
     <string name="frame_gen_get_from_steam">GET FROM STEAM</string>
     <string name="frame_gen_remove">REMOVE</string>
     <string name="frame_gen_footer">Imported files stay in the app\'s private folder and take effect the next time the game starts. IMPORT .DLL also works when Steam is unavailable.</string>
+    <string name="frame_gen_toggle_off">Off</string>
+    <string name="frame_gen_save_failed">Could not save the setting.</string>
+    <string name="frame_gen_drawer_need_dll">Needs Lossless.dll (Settings → General)</string>
+    <string name="lossless_row_import">IMPORT</string>
+    <string name="lossless_row_missing">Not imported — frame generation stays off</string>
+    <string name="lossless_row_installed">Installed — frame generation ready</string>
+    <string name="lossless_row_title">LOSSLESS.DLL (frame generation)</string>
+    <string name="frame_gen_import_done">Lossless.dll imported</string>
+    <string name="frame_gen_import_hint">Requires Lossless.dll from your own Lossless Scaling — import it in Settings → General.</string>
+    <string name="frame_gen_toggle_on">On</string>
 
     <!-- About 页 -->
     <string name="about_title">God of War III for Android</string>

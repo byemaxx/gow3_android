@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Parity gate for the C++ boot-image port (android-launcher/app/src/main/jni/gow3link) against the
+# Parity gate for the C++ boot-image port (android-launcher/app/src/main/cpp/gow3link) against the
 # Python reference (scripts/prepare.py, scripts/link_modules.py), which stays the behaviour baseline.
 #
 # Both sides build boot.bin (G3PROBE2) and boot-linked.bin (G3PROBE5) from the same game and the
@@ -26,11 +26,11 @@ work=$(mktemp -d)
 # --- the C++ side, built for the host: no NDK needed to run the parity check
 binary=$work/gow3_link_golden
 clang++ -std=c++17 -O1 -Wall -Wextra -Wno-unused-parameter -Wno-unused-but-set-variable \
-    -I "$root/android-launcher/app/src/main/jni/gow3link" \
-    -I "$root/android-launcher/app/src/main/jni/gow3prepare" \
+    -I "$root/android-launcher/app/src/main/cpp/gow3link" \
+    -I "$root/android-launcher/app/src/main/cpp/gow3prepare" \
     "$root/tools/migration/gow3_link_golden.cpp" \
-    "$root/android-launcher/app/src/main/jni/gow3link/gow3_link.cpp" \
-    "$root/android-launcher/app/src/main/jni/gow3prepare/gow3_prepare.cpp" \
+    "$root/android-launcher/app/src/main/cpp/gow3link/gow3_link.cpp" \
+    "$root/android-launcher/app/src/main/cpp/gow3prepare/gow3_prepare.cpp" \
     -o "$binary" || { echo "the parity test does not build" >&2; exit 1; }
 
 # --- the Python side

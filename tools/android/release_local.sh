@@ -164,17 +164,19 @@ remotes_with_pc_tags() {
     printf '%s' "${found:-none}"
 }
 
-# Android tag 统计在目标仓库上进行：PC 上游仓库永远不含 v*-android<N>
+# Android tag 统计在目标仓库上进行：PC 上游仓库永远不含 v*-bionic-v<N>
+# bionic 管线起 tag 形态为 v<pc>-bionic-v<N>；旧形态 v<pc>-android<N> 不再生成，
+# 仅由 launcher 的 UpdateChecker 兼容识别历史 release。
 next_android_tag() {
     local pc=$1 target=$2 tag n best=0
     while read -r tag; do
         [[ -n $tag ]] || continue
-        if [[ $tag =~ ^v${pc}-android([0-9]+)$ ]]; then
+        if [[ $tag =~ ^v${pc}-bionic-v([0-9]+)$ ]]; then
             n=${BASH_REMATCH[1]}
             ((10#$n > best)) && best=$((10#$n))
         fi
     done < <(gh api "repos/$target/tags" --paginate --jq '.[].name' 2>/dev/null || true)
-    printf 'v%s-android%d' "$pc" "$((best + 1))"
+    printf 'v%s-bionic-v%d' "$pc" "$((best + 1))"
 }
 
 target_repo_has_tag() {

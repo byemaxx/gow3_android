@@ -37,7 +37,10 @@ class Instance;
 
 class Swapchain {
 public:
-    explicit Swapchain(const Instance& instance, const Frontend::WindowSDL& window);
+    /// `lsfg_multiplier`：帧生成倍率（2–4，0=关）。≥2 时缓冲数 = 倍率+3、强制 FIFO
+    /// （change add-native-frame-generation，BB 同语义）。
+    explicit Swapchain(const Instance& instance, const Frontend::WindowSDL& window,
+                       u32 lsfg_multiplier = 0);
     ~Swapchain();
 
     /// 本 run 里 swapchain 可能有的最多缓冲数。
@@ -92,6 +95,10 @@ public:
     /// gow3: 桌面 swapchain 由 in-game 菜单的 vsync 设置驱动重建；Bionic 下节拍在 app 侧
     /// （GOW3_VSYNC），这里只保留接口兼容，不重建。
     void UpdateVsync() {}
+
+    /// 帧生成开关/倍率变化：强制 FIFO（MODE 消息）并按新缓冲数重建（RESET+新缓冲集）。
+    /// multiplier=0 关闭：回到直通缓冲数与 vsync 语义。
+    void SetFrameGeneration(u32 lsfg_multiplier);
 
 private:
     struct Buffer {

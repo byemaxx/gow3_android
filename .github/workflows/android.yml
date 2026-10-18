@@ -50,7 +50,6 @@ jobs:
     permissions:
       contents: read
     env:
-      GOW3_SIGNING: '1'
       GOW3_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       GOW3_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       GOW3_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -113,15 +112,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .local-deps/android/arm64-debs
-            .local-deps/android/arm64-sysroot
-            .local-deps/android/mesa-sysroot
-            .local-deps/android/mesa-venv
             .local-deps/android/src
             .local-deps/android/m2
             .local-deps/android/steam-libs
             ~/.cache/ccache
-          key: android-${{ runner.os }}-${{ hashFiles('tools/android/**', 'tools/android/mesa-patches/**', 'tools/android/lsfg-patches/**', 'cpu/**', 'gpu/CMakeLists.txt', 'gpu/third_party/**', 'ci/**') }}
+          key: android-${{ runner.os }}-${{ hashFiles('tools/android/**', 'cpu/**', 'gpu/CMakeLists.txt', 'gpu/third_party/**', 'ci/**') }}
           restore-keys: android-${{ runner.os }}-
 
       - name: Restore fexdroid APK cache
@@ -153,25 +148,16 @@ jobs:
             fi
             printf '::add-mask::%s\n' "${!name}"
           done
-          bash tools/android/prepare_signing.sh "$GOW3_KEYSTORE"
+          bash tools/android/inputs/prepare_signing.sh "$GOW3_KEYSTORE"
 
-      - name: Fetch ARM64 sysroot and Steam libraries
+      - name: Fetch Steam libraries
         shell: bash
         run: |
           set -euo pipefail
-          python3 tools/android/fetch_arm64_sysroot.py
-          python3 tools/android/fetch_arm64_sysroot.py --out .local-deps/android/mesa-sysroot --packages \
-            libc6-dev libstdc++-14-dev libgcc-14-dev linux-libc-dev zlib1g-dev libzstd-dev \
-            libexpat1-dev libxcb1-dev libx11-xcb-dev libxcb-xfixes0-dev libxcb-randr0-dev \
-            libxcb-dri3-dev libxcb-present-dev libxcb-sync-dev libxcb-shm0-dev libxshmfence-dev \
-            libx11-dev libxrandr-dev libdrm-dev
           bash tools/android/inputs/fetch_steam_libs.sh
 
-      - name: Build Turnip and LSFG variants
-        run: |
-          bash tools/android/build/build_turnip.sh main
-          bash tools/android/build/build_turnip.sh gen8
-          bash tools/android/build/build_lsfg.sh
+      # Vulkan 驱动不进 payload：设备侧由 DriverManager / install_bionic_driver.sh 安装
+      # adrenotools 风格驱动包（下载源见 launcher assets driver_sources.json）。
 
       - name: Build the Bionic runtime
         shell: bash -el {0}
@@ -179,10 +165,10 @@ jobs:
           bash tools/android/build_bionic_deps.sh
           bash tools/android/build_bionic.sh
 
-      - name: Assemble the debug APK
+      - name: Build and sign the release APK
         run: |
-          bash tools/android/debug/build_bionic_debug_apk.sh
-          apk=out/debug/*.apk
+          bash tools/android/apk/build_release_apk.sh
+          apk=out/release/*.apk
           test -e $apk || { echo 'No APK was produced' >&2; exit 1; }
           sha256sum $apk > "$apk.sha256"
           echo "APK=$apk" >> "$GITHUB_ENV"

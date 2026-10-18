@@ -1,5 +1,11 @@
 package com.gow3.android.feature.about
 
+import com.gow3.android.ui.components.ActionButton
+
+import com.gow3.android.data.NotComparableReason
+import com.gow3.android.data.UpdateCheckResult
+import com.gow3.android.ui.components.LauncherColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,10 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
-import com.gow3.android.data.NotComparableReason
-import com.gow3.android.data.UpdateCheckResult
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
 
 /** 入口的三种状态：未触发、正在检查、已有结果。 */
 internal sealed interface UpdateCheckState {

@@ -1,5 +1,9 @@
 package com.gow3.android.feature.about
 
+import com.gow3.android.ui.components.ActionButton
+
+import com.gow3.android.ui.components.LauncherColors
+
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -28,8 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.gow3.android.R
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
 
 private const val AUTHOR = "zfitness"
 private const val QQ_GROUP = "1105902080"

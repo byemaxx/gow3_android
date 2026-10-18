@@ -95,6 +95,37 @@ export GOW3_GC_BUDGET_MB=${GOW3_GC_BUDGET_MB:-4096} GOW3_VRAM_IDLE_SECONDS=${GOW
 # 声明，gow3_present_proto.h）；0：显示最新帧，一个刷新周期里完成的帧被跳过。
 if [ "$(setting vsync)" = 1 ]; then export GOW3_VSYNC=1; else export GOW3_VSYNC=0; fi
 
+# ---- 帧生成（change add-native-frame-generation）：gow3_lsfg 引擎（libbloodframe.so）----
+# gow3.ini 的 framegen_* 键在启动期种子到 gow3data/framegen.state（游戏内 250ms watcher
+# 的热应用通道；抽屉 Apply 在游戏运行中重写同一文件）。DLL 查找顺序：游戏目录同级 →
+# 应用私有 gow3port/（与 Home 卡片的供给契约一致）。libgow3gpu 仅在倍率≥2 时 dlopen
+# libbloodframe.so；DLL/引擎缺失或能力不支持时一律回直通并在日志给出原因。
+framegen_requested=$(setting framegen_multiplier)
+case $framegen_requested in 2|3|4) [ "$(setting framegen_enabled)" = 1 ] || framegen_requested=0 ;; *) framegen_requested=0 ;; esac
+if [ "$framegen_requested" != 0 ] && [ "$GOW3_VSYNC" != 1 ]; then
+    echo "Frame generation needs FIFO (vsync=1): off"
+    framegen_requested=0
+fi
+unset GOW3_LSFG_STATE_FILE GOW3_LSFG_DLL GOW3_LSFG_LIB
+state_file="${GOW3_DATA_DIR:-$data_root}/framegen.state" # gow3data（与 launcher HUD 读取路径一致）
+flow=$(setting framegen_flow_scale)
+# 数值校验（0.25–1.00 连续合法；引擎/launcher 夹紧语义一致），非法回退默认 0.80
+flow_ok=$(awk -v v="$flow" 'BEGIN{exit !(v >= 0.25 && v <= 1.0)}') || flow=0.80
+printf 'multiplier=%s\nflow=%s\nperformance=1\nfp16=1\n' "$framegen_requested" "$flow" \
+    > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+export GOW3_LSFG_STATE_FILE="$state_file"
+dll=""
+# 查找顺序与 gow3_lsfg_state.cpp FindDll 一致：游戏目录同级（持久位）→ 应用私有。
+for d in "${GOW3_GAME_DIR%/}/.." "$files/gow3port"; do
+    [ -n "$d" ] && [ -f "$d/Lossless.dll" ] && { dll="$d/Lossless.dll"; break; }
+done
+[ -n "$dll" ] && export GOW3_LSFG_DLL="$dll"
+[ -f "$bionic/lib/libbloodframe.so" ] && export GOW3_LSFG_LIB="$bionic/lib/libbloodframe.so"
+if [ "$framegen_requested" != 0 ]; then
+    [ -n "$dll" ] || echo "Frame generation: no Lossless.dll (game folder or $files/gow3port): off"
+    [ -f "$bionic/lib/libbloodframe.so" ] || echo "Frame generation: libbloodframe.so missing: off"
+fi
+
 # ---- GPU 驱动（gow3.ini gpu_driver）----
 # "system"：手机自带驱动，经它的 Vulkan loader（GOW3_VULKAN_DRIVER 未设置）；一个 id 是
 # files/drivers/<name>/（DriverManager.java 生成，driver.lib 命名库文件，adrenotools 风格的

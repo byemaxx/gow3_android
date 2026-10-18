@@ -29,6 +29,7 @@ inputs=(
     "$out/bin/kgsl-chip-id"
     "$out/lib/libgow3cpu.so"
     "$out/lib/libgow3gpu.so"
+    "$out/lib/libbloodframe.so"
     "$out/lib/libc++_shared.so"
     "$out/lib/libSDL3.so"
     tools/android/device/run-bionic.sh
@@ -66,7 +67,7 @@ if [[ $stale == 1 ]]; then
     rm -rf "$bionic_tree"
     mkdir -p "$staging/bionic/bin" "$staging/bionic/lib" "$staging/home/gow3port" "$bionic_tree/home/gow3port"
     cp -f "$out/bin/gow3-probe" "$out/bin/kgsl-chip-id" "$staging/bionic/bin/"
-    cp -f "$out/lib/libgow3cpu.so" "$out/lib/libgow3gpu.so" \
+    cp -f "$out/lib/libgow3cpu.so" "$out/lib/libgow3gpu.so" "$out/lib/libbloodframe.so" \
           "$out/lib/libc++_shared.so" "$out/lib/libSDL3.so" "$staging/bionic/lib/"
     cp -f tools/android/device/run-bionic.sh "$staging/run-bionic.sh"
     # 默认设置与 FEX Config 输入（run-bionic.sh 从 gow3port/ 读取），与 glibc 打包同名。
@@ -90,7 +91,12 @@ if [[ $stale == 1 ]]; then
 fi
 
 mkdir -p "$payload_dir"
-cp -f "$archive" "$payload_dir/runtime.payload"
-# 运行时摘要：RuntimeInstaller 校验用（sha256 与 payload 一致）。
-shasum -a 256 "$archive" | awk '{print $1}' > "$payload_dir/runtime.sha256"
+# 内容感知复制：archive 未变时不触碰 payload 的 mtime。Gradle（externalNativeBuild 之后）
+# 会正确地 up-to-date 跳过 APK 重建——APK 里是否为当前 payload，由发布脚本与文档中的
+# runtime.sha256 摘要比对证明；这里不再无意义地刷新时间戳。
+if [[ ! -f $payload_dir/runtime.payload ]] || ! cmp -s "$archive" "$payload_dir/runtime.payload"; then
+    cp -f "$archive" "$payload_dir/runtime.payload"
+    # 运行时摘要：RuntimeInstaller 校验用（sha256 与 payload 一致）。
+    shasum -a 256 "$archive" | awk '{print $1}' > "$payload_dir/runtime.sha256"
+fi
 echo "Bionic runtime payload: $payload_dir/runtime.payload ($(du -h "$archive" | cut -f1))"

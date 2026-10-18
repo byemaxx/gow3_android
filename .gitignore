@@ -24,16 +24,18 @@ perf.data
 /docs/route_run.log
 mods.json
 patches.json
-!launcher/gow3.png
 .local-deps/
 .gradle
 local.properties
 .idea
-game
+# 根目录 game/ 是机器本地的玩家游戏数据（CUSA 序列号目录），永不入库；
+# 必须锚定根目录——裸词 `game` 会误伤 android-launcher 的 game/ Java 包新文件。
+/game/
 
-# APK-side JNI libraries: built from android-launcher/app/src/main/jni by
-# tools/android/build_jni_libs.sh, which the APK build runs first. The two .so next to them
-# (libfxdisplay.so, libfxio.so) are not built here - they are extracted inputs recorded in
-# provenance.json - so they stay tracked.
-tools/android/bridges/arm64-v8a/libgow3present.so
-tools/android/bridges/arm64-v8a/libgow3prepare.so
+# Machine-local: git worktree checkouts, editor/agent tooling and Finder droppings. None of these
+# belong in the index; a tracked .worktrees/ gitlink points only at the machine that created it.
+.worktrees/
+.DS_Store
+.agents/
+.opencode/
+.kotlin

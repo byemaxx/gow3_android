@@ -7,7 +7,7 @@
 # tools/android/apk/validate_release_apk.py.
 #
 # Signing: GOW3_KEYSTORE + GOW3_KEYSTORE_PASSWORD / GOW3_KEY_ALIAS / GOW3_KEY_PASSWORD (CI,
-# see tools/android/prepare_signing.sh), or a generated local development key when none are
+# see tools/android/inputs/prepare_signing.sh), or a generated local development key when none are
 # configured. The output lands in out/release/ with a sha256 file beside it.
 set -euo pipefail
 cd -- "$(dirname -- "$0")/../../.."

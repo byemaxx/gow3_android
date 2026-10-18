@@ -1,5 +1,9 @@
 package com.gow3.android.feature.about
 
+import com.gow3.android.ui.components.ActionButton
+
+import com.gow3.android.ui.components.LauncherColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,8 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
 
 /** 将 launcher 的 God of War III 运行时日志（例如 android-game.log）导出为 zip。 */
 @Composable

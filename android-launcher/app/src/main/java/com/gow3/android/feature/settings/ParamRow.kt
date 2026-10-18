@@ -1,5 +1,9 @@
 package com.gow3.android.feature.settings
 
+import com.gow3.android.data.model.LaunchParam
+import com.gow3.android.data.model.LaunchParams
+import com.gow3.android.ui.components.LauncherColors
+
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -34,9 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.gow3.android.R
-import com.gow3.android.data.LaunchParam
-import com.gow3.android.data.LaunchParams
-import com.gow3.android.ui.components.LauncherColors
 
 /**
  * 单行参数编辑控件，Settings 配置页按分类复用：多值参数用下拉、布尔参数用开关。
@@ -126,7 +127,7 @@ private fun selectedLabel(context: Context, values: Map<String, String>, param: 
 }
 
 @Composable
-private fun ParamInfoDialog(title: String, message: String, onDismiss: () -> Unit) {
+internal fun ParamInfoDialog(title: String, message: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier

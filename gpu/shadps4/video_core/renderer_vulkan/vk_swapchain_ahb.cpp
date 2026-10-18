@@ -26,7 +26,11 @@ constexpr u64 AhbUsage = AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT |
 
 /// GOW3_PRESENT_BUFFERS: the number of buffers (3 by default: one shown, one pending, one rendered).
 /// gow3port: 无 Lossless Scaling（LSFG），缓冲数固定 3 或环境变量指定。
-u32 BufferCount() {
+u32 BufferCount(u32 lsfg_multiplier = 0) {
+    // 帧生成：倍率+3（BB 同值——一个在显示、一个待提交、倍率-1 个排队加真实的余量）。
+    if (lsfg_multiplier >= 2) {
+        return lsfg_multiplier + 3;
+    }
     if (const char* value = std::getenv("GOW3_PRESENT_BUFFERS")) {
         const long count = std::strtol(value, nullptr, 10);
         if (count >= 2 && count <= static_cast<long>(8)) {
@@ -52,9 +56,10 @@ u32 Swapchain::MaxImageCount() {
     return BufferCount();
 }
 
-Swapchain::Swapchain(const Instance& instance_, const Frontend::WindowSDL& window_)
+Swapchain::Swapchain(const Instance& instance_, const Frontend::WindowSDL& window_,
+                     u32 lsfg_multiplier)
     : instance{instance_}, window{window_} {
-    image_count = BufferCount();
+    image_count = BufferCount(lsfg_multiplier);
     const vk::PhysicalDeviceExternalSemaphoreInfo semaphore_info{
         .handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eSyncFd,
     };
@@ -256,6 +261,18 @@ void Swapchain::CreateBuffer(u32 index) {
     buffer.view = view;
     SetObjectName(device, image, "AHB swapchain image {}", index);
     SetObjectName(device, view, "AHB swapchain view {}", index);
+}
+
+void Swapchain::SetFrameGeneration(u32 lsfg_multiplier) {
+    if (client.Connected() &&
+        !client.SetFifo(Gow3Present::Client::VsyncRequested() || lsfg_multiplier >= 2)) {
+        PeerGone();
+    }
+    const u32 count = BufferCount(lsfg_multiplier);
+    if (count != image_count) {
+        image_count = count;
+        Recreate(width != 0 ? width : window.GetWidth(), height != 0 ? height : window.GetHeight());
+    }
 }
 
 void Swapchain::Recreate(u32 width_, u32 height_) {

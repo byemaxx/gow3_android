@@ -17,6 +17,9 @@
 #include "gow3_graphics.h"
 #include "video_core/renderer_vulkan/vk_temporal_upscaler.h"
 #include "video_core/renderer_vulkan/vk_presenter.h"
+#ifdef __ANDROID__
+#include "gow3_lsfg.h" // 帧生成引擎宿主（change add-native-frame-generation）
+#endif
 #include "video_core/renderer_vulkan/vk_warmup_inbox.h"
 #include "video_core/renderer_vulkan/vk_rasterizer.h"
 #include "video_core/texture_cache/image.h"
@@ -135,9 +138,16 @@ Presenter::Presenter(Frontend::WindowSDL& window_, AmdGpu::Liverpool* liverpool_
       instance{window, EmulatorSettings.GetGpuId(), EmulatorSettings.IsVkValidationEnabled(),
                EmulatorSettings.IsVkCrashDiagnosticEnabled()},
       draw_scheduler{instance, true}, present_scheduler{instance}, flip_scheduler{instance},
-      swapchain{instance, window}, runtime{instance, draw_scheduler},
+      lsfg_requested{Gow3LsfgState::Initial()}, lsfg_watch{lsfg_requested},
+      lsfg{Lsfg::Create(instance, lsfg_requested)},
+      swapchain{instance, window, lsfg ? lsfg->Multiplier() : 0},
+      runtime{instance, draw_scheduler},
       rasterizer{std::make_unique<Rasterizer>(instance, draw_scheduler, runtime, liverpool)},
       texture_cache{rasterizer->GetTextureCache()} {
+#ifdef __ANDROID__
+    // 防御：无论成员声明/初始化顺序如何，确保交换链的缓冲数与 FIFO 跟随帧生成配置。
+    ApplyLsfgOutputMode();
+#endif
     const u32 num_images = swapchain.GetImageCount();
     const vk::Device device = instance.GetDevice();
 
@@ -742,11 +752,35 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool is_game_frame)
         return;
     }
 
+#ifdef __ANDROID__
+    // 帧生成：app 侧设置变更在两帧之间应用（BB 同位）。
+    PollLsfgState();
+#endif
+
     // Recreate the swapchain if the window was resized.
     swapchain.UpdateVsync();
     if (window.GetWidth() != swapchain.GetWidth() || window.GetHeight() != swapchain.GetHeight()) {
         swapchain.Recreate(window.GetWidth(), window.GetHeight());
     }
+
+#ifdef __ANDROID__
+    // 帧生成（gow3_lsfg.h）：先交生成帧，再交真实帧。仅接受与输出同尺寸的游戏帧
+    // （首帧在输出尺寸已知前生成的不算：上下文按该尺寸建一次）。
+    if (lsfg && is_game_frame && !is_reusing_frame) {
+        const vk::Extent2D extent = swapchain.GetExtent();
+        SetExpectedGameSize(s32(extent.width), s32(extent.height));
+        if (frame->width == expected_frame_width && frame->height == expected_frame_height &&
+            PresentWithLsfg(frame)) {
+            free_frame();
+            DebugState.IncFlipFrameNum();
+            return;
+        }
+        if (!lsfg) {
+            ApplyLsfgOutputMode(); // 引擎失败关闭：恢复正常缓冲数与呈现模式
+        }
+    }
+#endif
+
 
     if (!swapchain.AcquireNextImage()) {
         swapchain.Recreate(window.GetWidth(), window.GetHeight());
@@ -968,12 +1002,373 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool is_game_frame)
     }
 }
 
+
+#ifdef __ANDROID__
+// ---- 帧生成（change add-native-frame-generation；结构对齐 BB，适配 gow3 的单体 Present）----
+
+void Presenter::PollLsfgState() {
+    Gow3LsfgState::State next;
+    if (!lsfg_watch.Poll(next)) {
+        WriteLsfgStats();
+        return; // 无变化
+    }
+    if (next == lsfg_requested && (lsfg || !next.On())) {
+        WriteLsfgStats();
+        return; // 状态没变（或引擎该在而不在的请求已应用过）
+    }
+    ApplyLsfgState(next);
+}
+
+void Presenter::WriteLsfgStats() {
+    const char* state_path = Gow3LsfgState::FilePath();
+    if (!state_path || !*state_path) return; // env 未设（env-only 运行）：无遥测
+    const auto now = std::chrono::steady_clock::now();
+    const bool active = lsfg != nullptr;
+    if (active) {
+        if (now - lsfg_stats_ts < std::chrono::seconds(1)) return;
+        lsfg_stats_ts = now;
+        double src = 0, pres = 0;
+        if (!lsfg->Rates(&src, &pres)) return; // 首窗未满：下个周期再写
+        std::string path = state_path;
+        path = path.substr(0, path.rfind('/') + 1) + "framegen.stats"; // 与 app 侧 FrameGenSettings.STATS_FILE_NAME 一致
+        std::string tmp = path + ".tmp";
+        std::FILE* f = std::fopen(tmp.c_str(), "w");
+        if (!f) return;
+        std::fprintf(f, "source_fps=%.1f\npresented_fps=%.1f\nmultiplier=%u\n",
+                     src, pres, lsfg->Multiplier());
+        std::fclose(f);
+        std::rename(tmp.c_str(), path.c_str());
+        lsfg_stats_active = true;
+    } else if (lsfg_stats_active) {
+        // 关闭/引擎失败：清零一次，HUD 回单一帧率（spec 语义）。
+        std::string path = state_path;
+        path = path.substr(0, path.rfind('/') + 1) + "framegen.stats";
+        std::string tmp = path + ".tmp";
+        std::FILE* f = std::fopen(tmp.c_str(), "w");
+        if (!f) return;
+        std::fprintf(f, "source_fps=0\npresented_fps=0\nmultiplier=0\n");
+        std::fclose(f);
+        std::rename(tmp.c_str(), path.c_str());
+        lsfg_stats_active = false;
+    }
+}
+
+void Presenter::ApplyLsfgState(const Gow3LsfgState::State& next) {
+    lsfg_requested = next;
+    // 帧边界：本函数跑在 present 线程两帧之间，没有循环持有的缓冲。引擎的 flow
+    // scale/模型/生成帧数在启动时固定——任何“开”态变化都是重建 Lsfg：旧的等最后
+    // 一批完成并析构，新的在下一个真实帧建上下文（头几帧只填时域历史）。
+    lsfg.reset();
+    if (next.On()) {
+        lsfg = Lsfg::Create(instance, next);
+    }
+    // 交换链跟随实际运行的东西：倍率决定缓冲数，帧生成要求 FIFO——仅在开启时。
+    ApplyLsfgOutputMode();
+    if (lsfg) {
+        LOG_INFO(Render_Vulkan, "LSFG: now x{}, flow {:.2f}, performance {}, fp16 {}",
+                 next.multiplier, next.flow, next.performance ? 1 : 0, next.fp16 ? 1 : 0);
+    } else {
+        LOG_INFO(Render_Vulkan, "LSFG: off");
+    }
+}
+
+void Presenter::ApplyLsfgOutputMode() {
+    swapchain.SetFrameGeneration(lsfg ? lsfg->Multiplier() : 0);
+    ApplyFramesCap();
+}
+
+void Presenter::ApplyFramesCap() {
+    frames_cap.store(lsfg ? lsfg->FramesCap() : 0, std::memory_order_relaxed);
+    free_cv.notify_all();
+}
+
+bool Presenter::PresentWithLsfg(Frame* frame) {
+    // 本路径同样 AddSignal(frame->present_done)：先 reset（普通路径在 Present 里做，
+    // LSFG 分支在它之前 return），否则第二次提交起 fence 恒 signaled，
+    // NeedsSubmittedBeforePresent 的提交完成闸被架空。
+    const auto reset_result = instance.GetDevice().resetFences(frame->present_done);
+    ASSERT_MSG(reset_result == vk::Result::eSuccess,
+               "Unexpected error resetting present done fence: {}", vk::to_string(reset_result));
+    using Clock = std::chrono::steady_clock;
+    // gow3：Flush 在本线程同步提交（vkQueueSubmit 返回后才返回），无需 BB 的
+    // WaitSubmitted(tick) 守卫（其 recording 线程异步提交才有此需求；gow3 的无参
+    // WaitSubmitted 是 GPU 完成等待，会无谓卡流水线——见 vk_presenter 旧注释）。
+    const int generated =
+        lsfg->ProcessFrame(present_scheduler, frame->image, frame->width, frame->height,
+                           frame->ready_semaphore, frame->ready_tick);
+    if (generated < 0) {
+        lsfg.reset(); // 本次运行内关闭（日志有原因）：本帧走常规路径
+        return false;
+    }
+    // 每帧一次性全部入队，各写各的缓冲：生成帧按序，然后真实帧。只有交付给 app
+    // 的节奏被拉开。
+    const u32 buffer_set = swapchain.Generation();
+    const auto base = Clock::now(); // 突发交付的节拍起点
+    u32 handed = 0;
+    for (int i = 0; i < generated; ++i) {
+        const Lsfg::Output& output = lsfg->GetOutput(i);
+        // 生成帧来自外部（EXTERNAL）队列族、GENERAL 布局：blit 进交换链缓冲时按
+        // 外部来源取所有权，并等待该帧的 sync file（经 AddWait 的时间线信号量）。
+        if (!swapchain.AcquireNextImage()) {
+            break; // 没有缓冲：本循环其余生成帧不显示
+        }
+        const vk::Image dst = swapchain.Image();
+        const vk::Extent2D extent = swapchain.GetExtent();
+        auto& scheduler = present_scheduler;
+        const auto cmdbuf = scheduler.CommandBuffer();
+        const vk::ImageSubresourceRange color_range{
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+        };
+        const auto [acquire_src, acquire_dst] = swapchain.AcquireQueues();
+        // 引擎输出图的所有权在 VK_QUEUE_FAMILY_EXTERNAL（引擎侧交接，见 gow3_lsfg.cpp）；
+        // FOREIGN 是 app↔game 的 AHB 交接语义，别混用。
+        const std::array pre_barriers{
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eNone,
+                .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+                .oldLayout = swapchain.PresentLayout(),
+                .newLayout = vk::ImageLayout::eTransferDstOptimal,
+                .srcQueueFamilyIndex = acquire_src,
+                .dstQueueFamilyIndex = acquire_dst,
+                .image = dst,
+                .subresourceRange = color_range,
+            },
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+                .dstAccessMask = vk::AccessFlagBits::eTransferRead,
+                .oldLayout = vk::ImageLayout::eGeneral,
+                .newLayout = vk::ImageLayout::eTransferSrcOptimal,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
+                .dstQueueFamilyIndex = instance.GetGraphicsQueueFamilyIndex(),
+                .image = output.image,
+                .subresourceRange = color_range,
+            },
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                               vk::PipelineStageFlagBits::eTransfer,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, pre_barriers);
+        cmdbuf.blitImage(output.image, vk::ImageLayout::eTransferSrcOptimal, dst,
+                         vk::ImageLayout::eTransferDstOptimal,
+                         MakeImageBlitFit(frame->width, frame->height, extent.width, extent.height),
+                         vk::Filter::eLinear);
+        const auto [release_src, release_dst] = swapchain.ReleaseQueues();
+        const vk::ImageMemoryBarrier to_present{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eNone,
+            .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+            .newLayout = swapchain.PresentLayout(),
+            .srcQueueFamilyIndex = release_src,
+            .dstQueueFamilyIndex = release_dst,
+            .image = dst,
+            .subresourceRange = color_range,
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                               vk::PipelineStageFlagBits::eBottomOfPipe,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, to_present);
+        // 输出图所有权交回 EXTERNAL（引擎下一周期要用）。
+        const vk::ImageMemoryBarrier output_release{
+            .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+            .dstAccessMask = vk::AccessFlagBits::eNone,
+            .oldLayout = vk::ImageLayout::eGeneral,
+            .newLayout = vk::ImageLayout::eGeneral,
+            .srcQueueFamilyIndex = instance.GetGraphicsQueueFamilyIndex(),
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
+            .image = output.image,
+            .subresourceRange = color_range,
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                               vk::PipelineStageFlagBits::eBottomOfPipe,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, output_release);
+        // 交付节奏：第一个生成帧立即上，后续生成帧按 spacing 依次拉开（真实帧最后）。
+        // 放在 present 之前而非循环末尾——睡在交付前只影响展示节拍；堆在末尾会
+        // 在 frames_cap 下白白压低源帧率。
+        if (lsfg->Paced() && i > 0) {
+            const double spacing_ms =
+                std::clamp(lsfg->FrameIntervalMs() / double(generated + 1), 2.0, 60.0);
+            std::this_thread::sleep_until(base + std::chrono::microseconds(
+                                                        s64(spacing_ms * 1000.0 * u64(i))));
+        }
+        SubmitInfo info{};
+        // app 的 release fence（导入为本缓冲的 acquire 信号量）：合成器可能仍在读
+        // 该缓冲——不等待就是覆写竞态。null（首用无 fence）被 AddWait 丢弃。
+        info.AddWait(swapchain.GetImageAcquiredSemaphore());
+        if (output.wait) {
+            info.AddWait(output.wait);
+        }
+        info.AddSignal(swapchain.GetPresentReadySemaphore());
+        if (output.done) {
+            info.AddSignal(output.done);
+        }
+        scheduler.Flush(info);
+        lsfg->OutputSubmitted(u32(i), scheduler.CurrentTick());
+        {
+            std::scoped_lock submit_lock{Scheduler::submit_mutex};
+            swapchain.Present(); // 交给 app（该缓冲被扣住直到 RELEASE）
+        }
+        ++handed;
+    }
+    // 真实帧：走常规 blit 路径进它已 acquire 的缓冲（Present() 主体的剩余部分在此
+    // 不可复用——它已过 acquire 点，因此这里把真实帧也按同一路径交付）。
+    if (!swapchain.AcquireNextImage()) {
+        return true; // 没有缓冲给真实帧：本循环只上生成帧（罕见：缓冲数为倍率+3）
+    }
+    {
+        const vk::Image dst = swapchain.Image();
+        const vk::Extent2D extent = swapchain.GetExtent();
+        auto& scheduler = present_scheduler;
+        const auto cmdbuf = scheduler.CommandBuffer();
+        const vk::ImageSubresourceRange color_range{
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+        };
+        const auto [acquire_src, acquire_dst] = swapchain.AcquireQueues();
+        const std::array pre_barriers{
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eNone,
+                .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+                .oldLayout = swapchain.PresentLayout(),
+                .newLayout = vk::ImageLayout::eTransferDstOptimal,
+                .srcQueueFamilyIndex = acquire_src,
+                .dstQueueFamilyIndex = acquire_dst,
+                .image = dst,
+                .subresourceRange = color_range,
+            },
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+                .dstAccessMask = vk::AccessFlagBits::eTransferRead,
+                .oldLayout = vk::ImageLayout::eGeneral,
+                .newLayout = vk::ImageLayout::eTransferSrcOptimal,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = frame->image,
+                .subresourceRange = color_range,
+            },
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                               vk::PipelineStageFlagBits::eTransfer,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, pre_barriers);
+        const vk::ClearColorValue black{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}};
+        cmdbuf.clearColorImage(dst, vk::ImageLayout::eTransferDstOptimal, black, color_range);
+        const vk::MemoryBarrier clear_done{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                               vk::PipelineStageFlagBits::eTransfer,
+                               vk::DependencyFlagBits::eByRegion, clear_done, {}, {});
+        cmdbuf.blitImage(frame->image, vk::ImageLayout::eTransferSrcOptimal, dst,
+                         vk::ImageLayout::eTransferDstOptimal,
+                         MakeImageBlitFit(frame->width, frame->height, extent.width, extent.height),
+                         vk::Filter::eLinear);
+        // 游戏内设置菜单叠加层与直通路径一致（显示分辨率）。
+        const bool overlay = Gow3Overlay::Visible();
+        const std::array post_barriers{
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                .dstAccessMask = overlay ? vk::AccessFlagBits::eColorAttachmentRead |
+                                               vk::AccessFlagBits::eColorAttachmentWrite
+                                         : vk::AccessFlagBits::eNone,
+                .oldLayout = vk::ImageLayout::eTransferDstOptimal,
+                .newLayout = overlay ? vk::ImageLayout::eColorAttachmentOptimal
+                                     : swapchain.PresentLayout(),
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = dst,
+                .subresourceRange = color_range,
+            },
+            vk::ImageMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eTransferRead,
+                .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+                .oldLayout = vk::ImageLayout::eTransferSrcOptimal,
+                .newLayout = vk::ImageLayout::eGeneral,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = frame->image,
+                .subresourceRange = color_range,
+            },
+        };
+        cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                               vk::PipelineStageFlagBits::eAllCommands,
+                               vk::DependencyFlagBits::eByRegion, {}, {}, post_barriers);
+        if (overlay) {
+            Gow3Overlay::Render(cmdbuf, swapchain.ImageView(), extent);
+            const auto [release_src, release_dst] = swapchain.ReleaseQueues();
+            const vk::ImageMemoryBarrier to_present{
+                .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+                .dstAccessMask = vk::AccessFlagBits::eNone,
+                .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+                .newLayout = swapchain.PresentLayout(),
+                .srcQueueFamilyIndex = release_src,
+                .dstQueueFamilyIndex = release_dst,
+                .image = dst,
+                .subresourceRange = color_range,
+            };
+            cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                   vk::PipelineStageFlagBits::eBottomOfPipe,
+                                   vk::DependencyFlagBits::eByRegion, {}, {}, to_present);
+        } else {
+            const auto [release_src, release_dst] = swapchain.ReleaseQueues();
+            if (release_src != release_dst) {
+                const vk::ImageMemoryBarrier hand_over{
+                    .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                    .dstAccessMask = vk::AccessFlagBits::eNone,
+                    .oldLayout = swapchain.PresentLayout(),
+                    .newLayout = swapchain.PresentLayout(),
+                    .srcQueueFamilyIndex = release_src,
+                    .dstQueueFamilyIndex = release_dst,
+                    .image = dst,
+                    .subresourceRange = color_range,
+                };
+                cmdbuf.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+                                       vk::PipelineStageFlagBits::eAllCommands,
+                                       vk::DependencyFlagBits::eByRegion, {}, {}, hand_over);
+            }
+        }
+        SubmitInfo info{};
+        info.AddWait(swapchain.GetImageAcquiredSemaphore());
+        info.AddWait(frame->ready_semaphore, frame->ready_tick);
+        info.AddSignal(swapchain.GetPresentReadySemaphore());
+        info.AddSignal(frame->present_done);
+        scheduler.Flush(info);
+        if (swapchain.NeedsSubmittedBeforePresent()) {
+            const auto waited = instance.GetDevice().waitForFences(frame->present_done, vk::True,
+                                                                   std::numeric_limits<u64>::max());
+            ASSERT_MSG(waited == vk::Result::eSuccess,
+                       "Waiting before the AHB present export failed: {}", vk::to_string(waited));
+        }
+        swapchain.Present();
+        ++handed;
+    }
+    if (swapchain.Generation() != buffer_set) {
+        return true; // 中途缓冲换代：本循环已交付的帧随旧代作废
+    }
+    return true;
+}
+#endif // __ANDROID__
+
+
 Frame* Presenter::GetRenderFrame() {
     // Wait for free presentation frames
     Frame* frame;
     {
         std::unique_lock lock{free_mutex};
+#ifdef __ANDROID__
+        // 帧生成开启时，游戏帧还要等 frames_cap 之外没有未呈现帧：present 线程每帧
+        // 做的事更多，排队给它的帧就是延迟（BB 同语义）。
+        free_cv.wait(lock, [this] {
+            const u32 cap = frames_cap.load(std::memory_order_relaxed);
+            return !free_queue.empty() && (cap == 0 || present_frames.size() - free_queue.size() < cap);
+        });
+#else
         free_cv.wait(lock, [this] { return !free_queue.empty(); });
+#endif
         LOG_DEBUG(Render_Vulkan, "Got render frame, remaining {}", free_queue.size() - 1);
 
         // Take the frame from the queue

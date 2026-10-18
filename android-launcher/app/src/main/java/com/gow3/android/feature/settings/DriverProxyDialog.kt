@@ -1,5 +1,10 @@
 package com.gow3.android.feature.settings
 
+import com.gow3.android.ui.components.ActionButton
+
+import com.gow3.android.data.driver.DriverProxy
+import com.gow3.android.ui.components.LauncherColors
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,9 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.gow3.android.R
-import com.gow3.android.data.DriverProxy
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.LauncherColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

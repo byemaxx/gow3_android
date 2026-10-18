@@ -104,7 +104,7 @@ Android 端仍在真机验证中，暂无稳定的性能数据。
 | GPU | `gpu/shadps4/` | shadPS4 图形核心，将 PS4 GPU 指令翻译为 Vulkan，并包含后台着色器缓存、延迟回读等优化 |
 | 游戏内菜单 | `gpu/shim/gow3_overlay.cpp` | Dear ImGui 菜单与性能叠加层；设置位于 `gpu/shim/gow3_settings.cpp` |
 | 补丁 | `patches/God_of_War_III_Remastered.xml`、`scripts/patches.py` | 启动时在内存中应用，不修改游戏文件 |
-| 启动 | `android-launcher/`、`run.sh` | Android 端由 launcher 准备镜像、启动 `gow3-probe`；`run.sh` 为桌面版启动入口 |
+| 启动 | `android-launcher/` | Android 端由 launcher 准备镜像、启动 `gow3-probe` |
 
 更多文档：[模组](docs/MODS.md)、[帧图与放大器](docs/upscaler.md)、[GPU 并行工作](docs/parallel_gpu.md)
 与[路线图](docs/gow3/ROADMAP.md)。

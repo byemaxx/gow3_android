@@ -1,5 +1,8 @@
 package com.gow3.android.data
 
+import com.gow3.android.data.model.GameSfo
+
+
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -92,6 +95,10 @@ class PatchCatalogException(val problem: CatalogProblem) : Exception(problem.nam
 data class PatchCatalog(val titleId: String, val appVersion: String, val patches: List<GamePatch>) {
     val selectionKey: String get() = "patches_${titleId}_${appVersion.replace('.', '_')}"
 
+    /** 设置页「跳过动画」快捷开关控制的补丁组：按名匹配，目录缺失的自动忽略。 */
+    val skipVideoPatches: List<GamePatch>
+        get() = patches.filter { it.name in SKIP_VIDEO_PATCHES }
+
     /** 分辨率和帧率与首页共用设置，其余选择按 Title ID 和版本隔离。 */
     fun selected(ini: Map<String, String>): Set<String> {
         val selected = if (selectionKey in ini) ini.getValue(selectionKey).split(';').filter { it.isNotBlank() }.toMutableSet()
@@ -130,8 +137,25 @@ data class PatchCatalog(val titleId: String, val appVersion: String, val patches
         return updates
     }
 
+    /**
+     * 同时切换一组补丁（设置页「跳过动画」快捷开关一次控制两个 Skip 补丁）。
+     * 写入契约与单补丁 [toggle] 完全一致；这组补丁不带分辨率/帧率副作用，无特殊联动。
+     */
+    fun toggleAll(ini: Map<String, String>, group: List<GamePatch>, enabled: Boolean): Map<String, String> {
+        require(group.isNotEmpty() && group.all { it in patches })
+        val selected = selected(ini).toMutableSet()
+        group.forEach { if (enabled) selected.add(it.name) else selected.remove(it.name) }
+        return mapOf(
+            "restart_unconfirmed" to "0",
+            selectionKey to patches.filter { it.name in selected }.joinToString(";") { it.name },
+        )
+    }
+
     companion object {
         private const val TEXTURE = "Bug Fix - Texture Corruption Fix"
+
+        /** 「跳过动画」快捷开关绑定的补丁名（四个目录版本均有提供）。 */
+        private val SKIP_VIDEO_PATCHES = setOf("Skip Intro", "Skip Any Video With X Button")
         private val versions = mapOf(
             "CUSA01623" to setOf("01.02"), "CUSA01715" to setOf("01.02"),
             "CUSA01720" to setOf("01.02"), "CUSA01740" to setOf("01.00", "01.02"),

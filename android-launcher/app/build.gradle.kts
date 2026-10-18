@@ -26,7 +26,27 @@ android {
         versionName = "2.1.7-bionic-v1-vibration-audio"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 静态 libc++：launcher 不带 libc++_shared.so，不为两个小库多塞一份运行时。
+        // NDK 与 runtime 工具链（tools/android/build_bionic.sh）保持同一个版本。
+        externalNativeBuild {
+            cmake {
+                arguments += "-DANDROID_STL=c++_static"
+                abiFilters += "arm64-v8a"
+            }
+        }
     }
+
+    // launcher 自己的 JNI 桥库（libgow3present / libgow3prepare）由 CMake 在 APK
+    // 构建中直接产出：src/main/cpp 是 Android Studio 原生识别的目录，AS 的 Run 与
+    // 命令行 gradlew 走同一条 native 构建路径，不再有脚本旁路与过期 .so。
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+    ndkVersion = "29.0.14206865"
 
     buildTypes {
         release {
@@ -65,7 +85,6 @@ android {
         getByName("main") {
             // 页面与运行时共用按 ID 的 XML 目录，不维护第二份补丁名单。
             assets.srcDir("../../patches")
-            jniLibs.srcDir("../../tools/android/bridges")
             // Steam real implementation vs. no-Steam fallback, gated on the fetched libraries.
             java.srcDir(if (steamAvailable) "src/steam/java" else "src/steamStub/java")
             if (steamAvailable) {
@@ -85,13 +104,13 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     systemProperty("gow3.patchCatalogDir", rootProject.file("../patches").absolutePath)
 }
 
-// 调试运行时 payload 不是源文件：它由仓库工具生成。
-// 在任何 debug 构建之前（幂等地）暂存它，以便 Android Studio 一键构建携带
-// 匹配的无游戏运行时，与 tools/android/debug/build_debug_apk.sh 的做法一致。
+// 调试运行时 payload 不是源文件：它由 CLI 工具生成（build_bionic.sh → out/bionic），
+// Gradle 无法构建它。在任何 debug 构建之前（幂等地）暂存它，以便 Android Studio
+// 一键构建携带匹配的无游戏运行时；指纹未变时不重写 payload（内容感知复制）。
 val stageDebugRuntime by tasks.registering(Exec::class) {
     workingDir = rootProject.projectDir.parentFile
-    commandLine("bash", "tools/android/debug/stage_debug_runtime.sh")
-    // 没有可靠的 up-to-date 输入：总是重新执行（运行时缓存新鲜时很快）。
+    commandLine("bash", "tools/android/debug/stage_bionic_runtime.sh")
+    // 没有可靠的 up-to-date 输入：总是重新执行（指纹命中时只做一次 sha256 对比，很快）。
     outputs.upToDateWhen { false }
 }
 tasks.matching { it.name == "preDebugBuild" }.configureEach {

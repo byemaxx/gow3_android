@@ -97,3 +97,10 @@ internal fun EmptyState(title: String, description: String) {
         Text(description, color = LauncherColors.textMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
+
+/** 分区小标题：金色衬线小字（Home 各配置区与 Settings 存储分类的统一头部样式）。 */
+@Composable
+internal fun SectionLabel(label: String) {
+    Text(label, color = LauncherColors.gold, fontFamily = FontFamily.Serif, fontSize = 11.sp,
+        fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+}

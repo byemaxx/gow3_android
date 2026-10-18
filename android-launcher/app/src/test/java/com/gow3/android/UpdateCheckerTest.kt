@@ -5,6 +5,7 @@ import com.gow3.android.data.GitHubRelease
 import com.gow3.android.data.NotComparableReason
 import com.gow3.android.data.UpdateCheckResult
 import com.gow3.android.data.UpdateChecker
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,6 +33,36 @@ class UpdateCheckerTest {
         val nine = AndroidReleaseVersion.parse("2.1.6-android9")
         val ten = AndroidReleaseVersion.parse("2.1.6-android10")
         assertTrue(nine!! < ten!!)
+    }
+
+    @Test
+    fun `bionic tag and version name parse to the same value`() {
+        val fromTag = AndroidReleaseVersion.parse("v2.1.7-bionic-v1")
+        val fromVersionName = AndroidReleaseVersion.parse("2.1.7-bionic-v1")
+        assertEquals(fromTag, fromVersionName)
+        assertEquals(listOf(2L, 1L, 7L), fromTag?.upstream)
+        assertEquals(1L, fromTag?.androidRevision)
+    }
+
+    @Test
+    fun `bionic revision compares numerically`() {
+        val one = AndroidReleaseVersion.parse("2.1.7-bionic-v1")
+        val ten = AndroidReleaseVersion.parse("2.1.7-bionic-v10")
+        assertTrue(one!! < ten!!)
+    }
+
+    @Test
+    fun `installed bionic apk compares against a newer bionic release`() {
+        val bionicRelease = release.copy(tag = "v2.2.0-bionic-v1")
+        val result = UpdateChecker.compare("2.1.7-bionic-v1", "v2.2.0-bionic-v1", bionicRelease)
+        assertTrue(result is UpdateCheckResult.Newer)
+        assertEquals("2.2.0-bionic-v1", (result as UpdateCheckResult.Newer).version)
+    }
+
+    @Test
+    fun `same upstream and revision across tag families report up to date`() {
+        val result = UpdateChecker.compare("2.1.7-bionic-v1", "v2.1.7-android1", release)
+        assertTrue(result is UpdateCheckResult.UpToDate)
     }
 
     @Test

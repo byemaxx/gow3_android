@@ -1,5 +1,19 @@
 package com.gow3.android.feature.mods
 
+import com.gow3.android.ui.components.ActionButton
+import com.gow3.android.ui.components.EmptyState
+import com.gow3.android.ui.components.ScreenColumn
+
+import com.gow3.android.core.settings.GamePrefs
+import com.gow3.android.core.settings.Gow3Settings
+import com.gow3.android.data.CatalogProblem
+import com.gow3.android.data.GamePatch
+import com.gow3.android.data.Gow3Data
+import com.gow3.android.data.PatchCatalog
+import com.gow3.android.data.PatchCatalogException
+import com.gow3.android.data.PatchGroup
+import com.gow3.android.ui.components.LauncherColors
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.foundation.BorderStroke
@@ -38,17 +52,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.gow3.android.R
-import com.gow3.android.data.CatalogProblem
-import com.gow3.android.data.GamePatch
-import com.gow3.android.data.Gow3Data
-import com.gow3.android.data.Gow3Ini
-import com.gow3.android.data.PatchCatalog
-import com.gow3.android.data.PatchCatalogException
-import com.gow3.android.data.PatchGroup
-import com.gow3.android.ui.components.ActionButton
-import com.gow3.android.ui.components.EmptyState
-import com.gow3.android.ui.components.LauncherColors
-import com.gow3.android.ui.components.ScreenColumn
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,7 +60,7 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun ModsScreen() {
     val context = LocalContext.current
-    val prefs = remember(context) { context.getSharedPreferences("gow3", Context.MODE_PRIVATE) }
+    val prefs = remember(context) { GamePrefs(context) }
     var revision by remember { mutableIntStateOf(0) }
     var catalog by remember { mutableStateOf<PatchCatalog?>(null) }
     var ini by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -69,8 +72,8 @@ internal fun ModsScreen() {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     fun load(): PatchCatalog = PatchCatalog.load(
-        prefs.getString("game_dir", null)?.let(::File),
-        prefs.getString("update_dir", null)?.takeIf { it.isNotBlank() }?.let(::File),
+        prefs.gameDir()?.let(::File),
+        prefs.updateDir()?.takeIf { it.isNotBlank() }?.let(::File),
         context.assets::open,
     )
 
@@ -79,10 +82,10 @@ internal fun ModsScreen() {
             if (key == "game_dir" || key == "update_dir") revision++
         }
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) revision++ }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
+        prefs.raw.registerOnSharedPreferenceChangeListener(listener)
         lifecycle.addObserver(observer)
         onDispose {
-            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+            prefs.raw.unregisterOnSharedPreferenceChangeListener(listener)
             lifecycle.removeObserver(observer)
         }
     }
@@ -91,7 +94,7 @@ internal fun ModsScreen() {
         catalog = null
         problem = null
         notice = null
-        val result = withContext(Dispatchers.IO) { runCatching { load() to Gow3Ini.read(Gow3Data.config(context)) } }
+        val result = withContext(Dispatchers.IO) { runCatching { load() to Gow3Settings.read(Gow3Data.config(context)) } }
         result.onSuccess { (loaded, values) -> catalog = loaded; ini = values }
             .onFailure { problem = (it as? PatchCatalogException)?.problem ?: CatalogProblem.READ_FAILED }
         loading = false
@@ -106,8 +109,8 @@ internal fun ModsScreen() {
                     // 写入前重新读配置和身份，避免覆盖首页刚保存的值或写到另一游戏。
                     check(load().selectionKey == current.selectionKey)
                     val file = Gow3Data.config(context)
-                    check(Gow3Ini.write(file, current.toggle(Gow3Ini.read(file), patch, enabled)))
-                    Gow3Ini.read(file)
+                    check(Gow3Settings.update(file, current.toggle(Gow3Settings.read(file), patch, enabled)))
+                    Gow3Settings.read(file)
                 }
             }
             result.onSuccess { values ->

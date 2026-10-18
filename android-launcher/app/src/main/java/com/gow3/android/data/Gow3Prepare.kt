@@ -1,5 +1,8 @@
 package com.gow3.android.data
 
+import com.gow3.android.data.model.GameSfo
+
+
 import android.content.Context
 import android.util.Log
 import org.json.JSONObject
@@ -12,7 +15,7 @@ import java.io.File
  * launch_env.py on the host (or in the rootfs), so a phone build needed a machine with Python.
  * Here the launcher produces the same inputs itself: the patch XML is parsed with the platform DOM
  * for its own UI anyway, and the binary half - the PS4 SELF, the signature search and the G3PATCH2
- * blob - is in libgow3prepare (app/src/main/jni/gow3prepare, a port of scripts/patches.py whose
+ * blob - is in libgow3prepare (app/src/main/cpp/gow3prepare, a port of scripts/patches.py whose
  * output is checked byte for byte against the Python by tools/migration/run_prepare_golden.sh).
  *
  * What lands in <files>/gow3port/data: patches.bin, content.bin, patch_status.json and launch.env.

@@ -4,34 +4,25 @@ belonged to the retired glibc/proot runtime: the X11 display bridge is replaced 
 libgow3present, and the XTEST input bridge could never work under Bionic, which has no X
 server. Neither binary is part of this build any more.
 
-Turnip Vulkan driver: Mesa (MIT), https://gitlab.freedesktop.org/mesa/mesa
-commit 35b085c4c067f198ce0b6437d94678e47b9c645f, with fexdroid's Mesa patches
-0001, 0005, 0006 and 0007 (patches/mesa at fexdroid revision
-dbf9808b07570faf5aa912af16d4c4a1b5d0130f), under the fexdroid license below.
-Adreno 8xx variant: Mesa from https://github.com/whitebelyash/mesa-unified
-(turnip/gen8, commit 9c7e022677dfa3abb356c2b6732cbd2e25783d01, MIT), with
-upstream Mesa commits b889ab52, b7ad24ad, e984ef29, 6cb65e61 and the same
-fexdroid patches. The driver is not bundled in this APK: the game loads whichever
-pack the player installs under files/drivers/<name>, and the shipped default is the
-phone's own driver (gow3.ini: gpu_driver). tools/android/build/build_turnip.sh
-builds the main and Adreno 8xx variants for packaging as a driver pack.
+Vulkan driver: not bundled in this APK at all. The game loads whichever
+adrenotools-style driver pack the player installs under files/drivers/<name>
+(launcher DriverManager download or manual install; the shipped default is the
+phone's own driver, gow3.ini: gpu_driver). No Mesa/Turnip code is built or
+distributed with this app.
 
-lsfg-vk 1.0.0 (gow3port/arm64/lsfg): Lossless Scaling frame generation on Linux,
-https://github.com/PancakeTAS/lsfg-vk (tag v1.0.0), MIT License, Copyright (c)
-2025 lsfg-vk (gow3port/arm64/lsfg/LICENSE.md). Built for ARM64 with this port's
-changes for the Turnip driver (gow3port/arm64/lsfg/0001-turnip-kgsl-sync-fd.patch).
-It includes dxbc from DXVK (zlib/libpng license; Copyright (c) 2017 Philip
-Rebohle, 2019 Joshua Ashton, 2019 Robin Kertels, 2023 Jeffrey Ellison),
-pe-parse (MIT, Copyright (c) 2013 Andrew Ruef), toml11 (MIT, Copyright (c) 2017
-Toru Niina) and volk (MIT, Copyright (c) 2018-2025 Arseny Kapoulkine).
-Frame generation itself is not part of the Bionic runtime: the AHB swapchain
-loads no LSFG layer, and the launcher's FRAME GENERATION entry is disabled.
-Lossless Scaling and its Lossless.dll are also not included and are never
-redistributed with this app: the player supplies their own copy, either by
-importing the file on the launcher Home page (FRAME GENERATION, IMPORT .DLL)
-or by signing in to Steam below. The app only stores it in its own private
-folder. tools/android/build/build_lsfg.sh remains for packaging the module
-separately where that is wanted.
+Frame generation (LSFG, change add-native-frame-generation): the Bionic game
+process loads libbloodframe.so (MIT, https://github.com/ducvd89/bloodframe,
+pinned commit c29027555cfa8c9fc73c20f03816230becb9f469; it carries the history
+of GameNative's MIT lsfg-vk Android fork, based on lsfg-vk 1.0 by PancakeTAS).
+The library is built by tools/android/build_framegen.sh into the runtime
+payload (gow3port/bionic/lib/) and is dlopen()ed by libgow3gpu only while
+frame generation is on. Lossless Scaling and its Lossless.dll are NOT included
+and are never redistributed with this app: the player supplies their own copy
+(launcher Home, IMPORT .DLL on the FRAME GENERATION card, or Settings →
+General → IMPORT, or Steam below); the engine reads it as data (never
+executes it) and the file stays in the player's folders.
+
+(Former note "Frame generation: not part of this app" is superseded above.)
 
 Steam sign-in (downloads Lossless.dll from the player's own Lossless Scaling):
 JavaSteam 1.8.0 (MIT, https://github.com/Longi94/JavaSteam), with Kotlin and
@@ -45,25 +36,3 @@ is drawn with ZXing core 3.5.4 (Apache-2.0). Menu icons: Material Design icons
 
 FSR 3.1: AMD FidelityFX (MIT) through
 FireBurn/FSR-Vulkan.
-
-MIT License
-
-Copyright (c) 2026 Marius
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.

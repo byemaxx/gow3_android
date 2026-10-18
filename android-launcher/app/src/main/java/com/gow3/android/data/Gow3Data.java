@@ -55,7 +55,49 @@ public final class Gow3Data {
         if (!new File(data, CONFIG).isFile() && defaultConfig != null && defaultConfig.isFile())
             copyFileAtomically(defaultConfig, new File(data, CONFIG));
         if (!new File(data, CONFIG).isFile()) throw new IOException("Cannot create GOW3 configuration");
+        retireShowFps(new File(data, CONFIG));
         Files.write(new File(data, MARKER).toPath(), SCHEMA.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+    }
+
+    /**
+     * 引擎自带 FPS 显示（gow3.ini 的 show_fps）已退役：帧率显示统一由 launcher 侧
+     * 性能 HUD（PerfHudOverlay）提供，UI 已移除该键的全部入口。历史安装的配置可能
+     * 残留 show_fps=1（旧默认值），这里固定改写为 0，使引擎 FPS 叠加层不再出现；
+     * 键缺失或已为 0 时不写文件（幂等）。改写整文件重写、保留其它行，与
+     * Gow3Settings.update 的安全写回形态一致。
+     */
+    private static void retireShowFps(File config) throws IOException {
+        java.util.List<String> lines = Files.readAllLines(config.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+        boolean changed = false;
+        for (int i = 0; i < lines.size(); i++) {
+            String trimmed = lines.get(i).trim();
+            // 精确匹配 show_fps 键（show_fps_old 等前缀相似键不得误伤）
+            if (!trimmed.startsWith("show_fps")) continue;
+            String rest = trimmed.substring("show_fps".length());
+            if (rest.isEmpty() || (rest.charAt(0) != '=' && !Character.isWhitespace(rest.charAt(0)))) continue;
+            if (rest.substring(rest.indexOf('=') + 1).trim().equals("0")) break; // 已关闭：不触碰文件
+            // 改写为 0 并保留行内注释；gow3.ini 的键由 Gow3Settings/默认模板顶格写入
+            lines.set(i, "show_fps=0" + trailingComment(lines.get(i)));
+            changed = true;
+            break;
+        }
+        if (!changed) return;
+        FileOutputStream out = new FileOutputStream(config);
+        try {
+            for (String line : lines) {
+                out.write((line + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            out.getFD().sync();
+        } finally {
+            out.close();
+        }
+    }
+
+    /** 保留键值行尾的行内注释（如 `show_fps=1 ; note` → `show_fps=0 ; note`）。 */
+    private static String trailingComment(String original) {
+        int semi = original.indexOf(';'), hash = original.indexOf('#');
+        int cut = semi >= 0 && (hash < 0 || semi < hash) ? semi : hash;
+        return cut >= 0 ? " " + original.substring(cut).trim() : "";
     }
 
     private static void ensureDirectory(File dir) throws IOException {

@@ -34,13 +34,15 @@
     <!-- 启动参数：参数名 -->
     <string name="param_upscaler">超分</string>
     <string name="param_resolution">分辨率</string>
+    <string name="param_anisotropy">各向异性过滤</string>
+    <string name="param_vibration">振动</string>
     <string name="param_fps_limit">帧率上限</string>
     <string name="param_engine_fps">引擎帧率</string>
     <string name="param_vsync">垂直同步</string>
     <string name="param_frames_queued">排队帧数</string>
     <string name="param_sharpen">锐化</string>
     <string name="param_sharpness">锐化强度</string>
-    <string name="param_show_fps">显示 FPS</string>
+    <string name="param_display_stretch">画面拉伸全屏</string>
 
     <!-- 启动参数：选项名 -->
     <string name="param_option_off_720p">关闭（以 1280×720 渲染）</string>
@@ -55,6 +57,7 @@
     <string name="param_option_1440p">1440p</string>
     <string name="param_option_1800p">1800p</string>
     <string name="param_option_4k">4K</string>
+    <string name="param_option_game_default">游戏默认</string>
     <string name="param_option_30">30</string>
     <string name="param_option_60">60</string>
     <string name="param_option_120">120</string>
@@ -74,6 +77,7 @@
     <string name="home_patch_unavailable">未匹配到补丁目录。请检查游戏与升级目录后再调整分辨率和引擎帧率，具体原因可在补丁页查看。</string>
     <string name="home_patch_unavailable_value">%1$s（当前版本不可用）</string>
     <string name="mobile_preset_title">默认配置</string>
+    <string name="mobile_preset_480p">480p · 极速省资源</string>
     <string name="mobile_preset_light">540p · 轻量省资源</string>
     <string name="mobile_preset_balanced">720p · 均衡</string>
     <string name="mobile_preset_clear">900p · 清晰优先</string>
@@ -81,13 +85,62 @@
     <string name="mobile_preset_custom">自定义</string>
     <string name="mobile_preset_unavailable">暂无兼容配置</string>
     <string name="mobile_preset_description">点击后同步设置分辨率、60 帧目标和移动端图形默认值，关闭环境光遮蔽、运动模糊、景深、泛光、柔和粒子和动态阴影，并开启跳过开场与按 X 跳过视频。之后仍可在此处或补丁页单独调整。预设为实验性组合，实际效果取决于手机，下次启动生效。</string>
+
+    <!-- 首页游戏身份卡（redesign-android-launcher-home） -->
+    <string name="home_identity_patches_loaded_fmt">补丁已加载 · %1$d 项可用</string>
+    <string name="home_identity_problem_title">无法读取游戏信息</string>
+    <string name="home_problem_no_game">请先在 设置 → 常规 中选择游戏目录。</string>
+    <string name="home_problem_invalid_game">所选目录缺少 eboot.bin 或游戏信息不可读。</string>
+    <string name="home_problem_invalid_update">升级补丁目录无效或与游戏不匹配。</string>
+    <string name="home_problem_unsupported">暂不支持该游戏（TITLE ID）版本。</string>
+    <string name="home_problem_version">游戏版本与补丁目录不匹配。</string>
+    <string name="home_problem_read_failed">读取游戏目录失败，请检查路径与存储权限。</string>
+    <string name="home_identity_open_storage">打开设置 · 常规  ›</string>
+
+    <!-- 首页预设分段选择器 -->
+    <string name="preset_caption_custom">已自定义 · 当前参数不匹配任何预设</string>
+    <string name="preset_disabled_no_catalog">暂无可用预设——请先在 设置 → 常规 中检查游戏与补丁目录。</string>
+
+    <!-- 首页 GPU 驱动底部面板 -->
+    <string name="driver_sheet_title">GPU 驱动</string>
+    <string name="driver_sheet_manage">管理驱动（下载 / 删除）  ›</string>
+
+    <!-- 首页用户/存档区（占位：多用户能力随 add-android-launcher-user-profiles 落地） -->
+    <string name="user_zone_title">玩家</string>
+    <string name="user_zone_default_name">Hunter</string>
+    <string name="user_zone_saves_ready">存档已就绪</string>
+    <string name="user_zone_saves_empty">暂无存档</string>
+    <string name="user_zone_note">多用户与存档管理将在后续版本提供。</string>
+
+    <!-- 首启游戏选择页（一次性硬门控） -->
+    <string name="first_run_title">选择你的游戏</string>
+    <string name="first_run_subtitle">选择游戏文件所在目录即可开始。</string>
+    <string name="first_run_game_folder">游戏目录</string>
+    <string name="first_run_update_folder">升级补丁目录</string>
+    <string name="first_run_required">必选</string>
+    <string name="first_run_optional">可选</string>
+    <string name="first_run_tap_to_select">点击选择</string>
+    <string name="first_run_update_desc">可选：游戏的升级补丁目录（如 CUSA01740-patch），启动时叠加到主游戏。</string>
+    <string name="first_run_confirm">确认</string>
+    <string name="first_run_confirm_locked">请先选择游戏目录</string>
+
+    <!-- 设置常规分类（原存储分类；首启之后目录修改的常驻位置） -->
+    <string name="storage_section_title">游戏目录</string>
+    <string name="storage_valid">有效</string>
+    <string name="storage_game_desc">点击选择解包后的游戏目录（须包含 eboot.bin）。</string>
+    <string name="storage_update_desc">可选：启动时叠加到主游戏上的升级补丁目录。</string>
     <string name="param_desc_vsync">将游戏帧与屏幕刷新率同步，避免画面撕裂。除非出现撕裂或卡顿，否则保持开启。</string>
     <string name="param_desc_frames_queued">游戏在屏幕上显示之前预先准备多少帧。数值越低越能降低输入延迟；数值越高在较弱的硬件上可能更流畅。</string>
+    <string name="param_desc_anisotropy">让斜视角下的地板与墙面纹理更清晰。数值越高可能多占用一点 GPU 带宽。下次启动生效。</string>
+    <string name="param_desc_vibration">按比例调节手柄振动强度，0% 表示关闭振动。游戏运行时立即生效。</string>
     <string name="param_desc_sharpen">在 FSR 升采样之后追加 RCAS 锐化。升采样器为 OFF 时无效果。</string>
     <string name="param_desc_sharpness">锐化强度（0.00–2.00）。仅在锐化开启时生效。</string>
-    <string name="param_desc_show_fps">游戏运行时显示每秒帧数叠加层。</string>
+    <string name="param_desc_display_stretch">把画面拉伸铺满整个屏幕（不保持宽高比，消除宽屏下的左右黑边，画面会变形）。下次启动生效。</string>
+    <string name="param_skip_animations">跳过动画</string>
+    <string name="param_desc_skip_animations">跳过开场 logo 与开场动画，并允许在游戏中按 X 跳过任意视频。与补丁页是同一组开关。</string>
 
     <!-- Settings 页分类 -->
+    <string name="param_category_general">常规</string>
     <string name="param_category_graphics">图形</string>
     <string name="param_category_performance">性能</string>
     <string name="param_category_controls">操作</string>
@@ -109,6 +162,16 @@
     <string name="frame_gen_get_from_steam">从 Steam 获取</string>
     <string name="frame_gen_remove">移除</string>
     <string name="frame_gen_footer">导入的文件保存在应用私有目录内，下次启动游戏时生效。没有 Steam 时同样可以「导入 .DLL」。</string>
+    <string name="frame_gen_toggle_off">关闭</string>
+    <string name="frame_gen_save_failed">设置保存失败。</string>
+    <string name="frame_gen_drawer_need_dll">需要 Lossless.dll（设置 → 常规 导入）</string>
+    <string name="lossless_row_import">导入</string>
+    <string name="lossless_row_missing">未导入——帧生成保持关闭</string>
+    <string name="lossless_row_installed">已导入——帧生成可用</string>
+    <string name="lossless_row_title">LOSSLESS.DLL（帧生成）</string>
+    <string name="frame_gen_import_done">Lossless.dll 已导入</string>
+    <string name="frame_gen_import_hint">需要你自备的 Lossless.dll——请前往 设置 → 常规 导入。</string>
+    <string name="frame_gen_toggle_on">开启</string>
 
     <!-- About 页 -->
     <string name="about_title">God of War III Android</string>
