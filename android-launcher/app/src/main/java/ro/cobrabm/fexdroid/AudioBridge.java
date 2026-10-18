@@ -15,7 +15,7 @@ import java.io.RandomAccessFile;
  *  FIFO; this plays it. The FIFO is held open read-write, so the game's open never blocks and a
  *  restarted game writes into the same pipe. The playback rate paces the game's audio thread.
  *  Self-healing: the supervisor loop reinitializes the AudioTrack and reopens the FIFO on any
- *  transient failure (write==0 while paused, write<0, AudioTrack uninitialized, EOF), without
+ *  transient failure (write<0, AudioTrack uninitialized, EOF), without
  *  ever deleting the FIFO inode so the game's fd can reconnect. */
 final class AudioBridge {
     private static final int RATE=48000, FRAME=4;
@@ -36,23 +36,23 @@ final class AudioBridge {
         ready.delete();
         state=0;
         running=true;
-        wantPlay=true;
         Thread thread=new Thread(this::run,"God of War III-audio");
         thread.setPriority(Thread.MAX_PRIORITY); thread.setDaemon(true); thread.start();
     }
-    void stop() {
+    synchronized void stop() {
         running=false; wantPlay=false; state=-1; ready.delete();
         AudioTrack t=track; if (t!=null) try { t.pause(); } catch (Exception ignored) {}
         RandomAccessFile p=pipeHandle;
         if (p!=null) try { p.close(); } catch (IOException ignored) {}
     }
-    void pause() {
+    synchronized void pause() {
         wantPlay=false;
-        AudioTrack t=track; if (t!=null) try { t.pause(); } catch (Exception ignored) {}
+        // Keep the FIFO/device clock draining: pausing it queues old audio in SDL upstream.
+        AudioTrack t=track; if (t!=null) try { t.setVolume(0f); } catch (Exception ignored) {}
     }
-    void resume() {
+    synchronized void resume() {
         wantPlay=true;
-        AudioTrack t=track; if (t!=null) try { t.play(); } catch (Exception ignored) {}
+        AudioTrack t=track; if (t!=null) try { t.setVolume(1f); t.play(); } catch (Exception ignored) {}
     }
 
     boolean awaitReady(long timeoutMs) {
@@ -93,9 +93,13 @@ final class AudioBridge {
                         .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY).build();
                     if (t.getState()!=AudioTrack.STATE_INITIALIZED) throw new IOException("AudioTrack is not initialized");
                     active=t;
-                    track=t;
-                    if (wantPlay) t.play();
-                    if (wantPlay && t.getPlayState()!=AudioTrack.PLAYSTATE_PLAYING)
+                    synchronized (this) {
+                        if (!running) break;
+                        track=t;
+                        t.setVolume(wantPlay ? 1f : 0f);
+                        t.play();
+                    }
+                    if (t.getPlayState()!=AudioTrack.PLAYSTATE_PLAYING)
                         throw new IOException("AudioTrack did not start");
                     // Recreate the ready marker on every successful (re)initialization so that a
                     // restarted game or a process that consults it always sees a fresh contract.
@@ -118,12 +122,13 @@ final class AudioBridge {
                         while (written<whole && running) {
                             int result=t.write(buffer,written,whole-written,AudioTrack.WRITE_BLOCKING);
                             if (result==0) {
-                                // Track is paused (onPause) or momentarily starved: sleep, then
-                                // retry. If the activity is resumed again we re-arm play().
-                                if (wantPlay && t.getPlayState()!=AudioTrack.PLAYSTATE_PLAYING)
-                                    try { t.play(); } catch (Exception ignored) {}
+                                // Even while muted, keep draining so the runtime cannot backlog audio.
+                                synchronized (this) {
+                                    if (running && t.getPlayState()!=AudioTrack.PLAYSTATE_PLAYING)
+                                        try { t.play(); } catch (Exception ignored) {}
+                                }
                                 if (++stallLogCounter%200==1)
-                                    android.util.Log.d("God of War III","audio: write returned 0 (paused/stalled)");
+                                    android.util.Log.d("God of War III","audio: write returned 0 (stalled)");
                                 Thread.sleep(5);
                                 continue;
                             }

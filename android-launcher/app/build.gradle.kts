@@ -22,8 +22,8 @@ android {
         applicationId = "com.gow3.android.bionic"
         minSdk = 28
         targetSdk = 28
-        versionCode = 2
-        versionName = "2.1.7-bionic-v1"
+        versionCode = 4
+        versionName = "2.1.7-bionic-v1-vibration-audio"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

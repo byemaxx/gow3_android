@@ -20,6 +20,7 @@
 #include <time.h>
 #include <SDL3/SDL.h>
 #include <sys/stat.h>
+#include "runtime_android_vibration.h"
 
 #define ERR_INVALID_ARG ((int32_t)0x80920001)
 #define ERR_INVALID_HANDLE ((int32_t)0x80920003)
@@ -432,7 +433,12 @@ static ABI int32_t pad_open(int32_t user, int32_t type, int32_t index, const voi
 }
 static ABI int32_t pad_close(int32_t handle) {
     if (handle!=PAD_HANDLE || !opened) return ERR_INVALID_HANDLE;
-    opened=0; return 0;
+    pthread_mutex_lock(&lock);
+    const char *android=getenv("GOW3_ANDROID_INPUT");
+    if (android && android[0]=='1') android_vibration_write(getenv("GOW3_PAD_FILE"),0,0);
+    opened=0;
+    pthread_mutex_unlock(&lock);
+    return 0;
 }
 static ABI int32_t pad_read_state(int32_t handle, PadData *data) {
     if (handle!=PAD_HANDLE || !opened) return ERR_INVALID_HANDLE;
@@ -471,8 +477,16 @@ static ABI int32_t pad_vibration(int32_t handle, const uint8_t *param) {
     if (handle!=PAD_HANDLE || !opened) return ERR_INVALID_HANDLE;
     if (!param) return ERR_INVALID_ARG;
     pthread_mutex_lock(&lock);
-    SDL_Gamepad *g=current_gamepad();
+    if (!opened) { pthread_mutex_unlock(&lock); return ERR_INVALID_HANDLE; }
     const unsigned percent=(unsigned)gow3gpu_vibration_percent();
+    const char *android=getenv("GOW3_ANDROID_INPUT");
+    if (android && android[0]=='1') {
+        int result=android_vibration_write(getenv("GOW3_PAD_FILE"),
+            scale_vibration(param[0],percent),scale_vibration(param[1],percent));
+        pthread_mutex_unlock(&lock);
+        return result;
+    }
+    SDL_Gamepad *g=current_gamepad();
     if (g) SDL_RumbleGamepad(g,scale_vibration(param[0], percent),
                              scale_vibration(param[1], percent),1000);
     pthread_mutex_unlock(&lock);

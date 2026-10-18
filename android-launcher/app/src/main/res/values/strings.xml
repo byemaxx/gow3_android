@@ -103,7 +103,7 @@
     <string name="param_desc_vsync">Syncs the game\'s frames with your screen\'s refresh rate to stop visual tearing. Leave it ON unless you see tearing or stutter.</string>
     <string name="param_desc_frames_queued">How many frames the game prepares ahead of what the screen shows. Lower numbers cut input lag; higher numbers can improve smoothness on weaker hardware.</string>
     <string name="param_desc_anisotropy">Sharpens floors and walls viewed at an angle. Higher values may use a little more GPU bandwidth. Takes effect on the next launch.</string>
-    <string name="param_desc_vibration">Scales the gamepad vibration strength. 0% disables vibration. Takes effect immediately while the game is running.</string>
+    <string name="param_desc_vibration">Scales vibration on supported gamepads, or on the phone when gamepad vibration is unavailable. 0% disables vibration. Strength control depends on device support.</string>
     <string name="param_desc_sharpen">Applies an RCAS sharpening pass after FSR upscaling. Has no effect while the upscaler is OFF.</string>
     <string name="param_desc_sharpness">Strength of the sharpening pass (0.00–2.00). Only used when sharpening is ON.</string>
     <string name="param_desc_show_fps">Shows a frames-per-second overlay while the game is running.</string>

@@ -1,0 +1,37 @@
+name: Android bridge regressions
+
+on:
+  push:
+    branches: [fix/android-vibration-audio]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regressions:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audio background and resume regression
+        run: python tests/test_audio_bridge.py
+      - name: Native vibration snapshot checks
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -I. tests/test_android_vibration.c -o "$RUNNER_TEMP/vibration-ipc"
+          "$RUNNER_TEMP/vibration-ipc"
+      - name: Fetch pinned SDL headers
+        run: |
+          curl --fail --location --retry 3 https://github.com/libsdl-org/SDL/releases/download/release-3.2.10/SDL3-3.2.10.tar.gz -o "$RUNNER_TEMP/sdl.tar.gz"
+          echo "f87be7b4dec66db4098e9c167b2aa34e2ca10aeb5443bdde95ae03185ed513e0  $RUNNER_TEMP/sdl.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/sdl.tar.gz" -C "$RUNNER_TEMP"
+      - name: scePadSetVibration Android and desktop routing
+        run: |
+          cc -std=c11 -O2 -ffunction-sections -fdata-sections -Wall -Wextra -Werror -I. -I"$RUNNER_TEMP/SDL3-3.2.10/include" tests/test_pad_vibration.c -Wl,--gc-sections -pthread -o "$RUNNER_TEMP/pad-vibration"
+          "$RUNNER_TEMP/pad-vibration"

@@ -61,6 +61,7 @@ public final class GameActivity extends Activity {
     private LinearLayout gameSettingsItem, cheatsItem, graphicsItem, losslessItem, controllerItem, swapFaceItem;
     private TouchControllerOverlay controllerOverlay;
     private PadBridge pad;
+    private VibrationBridge vibration;
     private AudioBridge audio;
     private volatile Process game;
     private volatile int shmid=-1;
@@ -100,6 +101,7 @@ public final class GameActivity extends Activity {
         if (launchOnReady) getIntent().removeExtra("action");
         pad=new PadBridge(new File(BASE,"android-pad.state"),
             getSharedPreferences("gow3",MODE_PRIVATE).getBoolean("swap_square_triangle",false));
+        vibration=new VibrationBridge(this,new File(BASE,"android-pad.state"));
         audio=new AudioBridge(new File(BASE,"audio.fifo"));
         buildScreen();
         immersive();
@@ -464,11 +466,13 @@ public final class GameActivity extends Activity {
         // 文本框开着时手柄要当作 OK/Cancel,必须在 pad.key 之前:它对 cross/circle 返回 true,
         // 放到后面就永远轮不到这里。按下确认名字的那个键也不该同时进游戏。
         if (imeGamepad(e)) return true;
+        vibration.device(e.getDevice());
         if (pad.key(e)) return true;
         return super.dispatchKeyEvent(e);
     }
     @Override public boolean dispatchGenericMotionEvent(MotionEvent e) {
         if (drawerOpen && e.isFromSource(android.view.InputDevice.SOURCE_JOYSTICK)) return true;
+        vibration.device(e.getDevice());
         return pad.motion(e) || super.dispatchGenericMotionEvent(e);
     }
     private boolean controllerEnabled() {
@@ -478,12 +482,13 @@ public final class GameActivity extends Activity {
         return getSharedPreferences("gow3",MODE_PRIVATE).getBoolean("swap_square_triangle",false);
     }
     @Override protected void onPause() {
+        if (vibration!=null) vibration.pause();
         if (controllerOverlay!=null) controllerOverlay.release();
         if (pad!=null) pad.reset();
         if (audio!=null) audio.pause();
         super.onPause();
     }
-    @Override protected void onResume() { super.onResume(); if (audio!=null) audio.resume(); }
+    @Override protected void onResume() { super.onResume(); if (audio!=null) audio.resume(); if (vibration!=null) vibration.resume(); }
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
@@ -844,6 +849,7 @@ public final class GameActivity extends Activity {
                     int code=launched.waitFor();
                     if (game==launched) {
                         game=null;
+                        vibration.stop();
                         shmid=-1; // present 的对端（游戏进程）没了：surface 重建不得再算"已连接"
                         Gow3Present.stop();
                         // run-gow3.sh exits 4 when Vulkan/Turnip cannot initialize: the driver
@@ -865,6 +871,7 @@ public final class GameActivity extends Activity {
         main.post(() -> { if (!destroyed) { status.setText(message); status.setVisibility(View.VISIBLE); } });
     }
     private void stopGame() {
+        if (vibration!=null) vibration.stop();
         Process p=game; game=null;
         if (p!=null) {
             p.destroyForcibly();
@@ -874,6 +881,7 @@ public final class GameActivity extends Activity {
         Gow3Present.stop();
     }
     @Override protected void onDestroy() {
+        if (vibration!=null) vibration.close();
         destroyed=true; pad.reset(); audio.stop(); main.removeCallbacksAndMessages(null);
         worker.shutdownNow();
         // The teardown used to run here on the main thread, which is what turned every quit into an
