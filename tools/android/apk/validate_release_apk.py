@@ -79,6 +79,10 @@ def validate_payload_tree(archive_bytes, manifest_bytes):
                 members[member.name] = member.size
                 if any(fragment in member.name for fragment in GAME_CONTENT):
                     raise ApkError('archive: forbidden game content: %s' % member.name)
+                if member.name.endswith('.sh'):
+                    if b'\r' in tar.extractfile(member).read():
+                        raise ApkError('shell script: %s contains CR/CRLF; Android requires LF line endings'
+                                       % member.name)
                 if member.name.endswith('gow3-probe'):
                     data = tar.extractfile(member).read(1024 * 1024)
                     if not _is_android_elf(data):
