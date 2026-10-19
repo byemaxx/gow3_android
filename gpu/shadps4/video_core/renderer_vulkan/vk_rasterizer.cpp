@@ -20,6 +20,7 @@
 #include "video_core/renderer_vulkan/vk_pipeline_cache.h"
 #include "video_core/renderer_vulkan/vk_rasterizer.h"
 #include "video_core/renderer_vulkan/vk_gpu_profiler.h"
+#include "video_core/renderer_vulkan/vk_indirect_guard.h"
 #include "gow3_threads.h"
 #include "video_core/renderer_vulkan/vk_runtime.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
@@ -1126,7 +1127,14 @@ void Rasterizer::DrawRecord(const GraphicsPipeline* pipeline, const PreparedDraw
     const u32 num_instances = regs.num_instances.NumInstances();
     const u32 first_vertex = vertex_offset;
     const u32 first_instance = instance_offset;
-    scheduler.Record([=, this](vk::CommandBuffer cmdbuf) {
+    const auto* ps_info = pipeline->GetStages()[u32(Shader::SwStage::Fragment)];
+    const Breadcrumbs::Crumb crumb{
+        .kind = is_indexed ? Breadcrumbs::Kind::DrawIndexed : Breadcrumbs::Kind::Draw,
+        .hash = {vs_info.pgm_hash, ps_info ? ps_info->pgm_hash : 0},
+        .program = {vs_info.pgm_base, ps_info ? ps_info->pgm_base : 0},
+        .count = {num_indices, num_instances, 0},
+    };
+    scheduler.RecordCrumb(crumb, [=, this](vk::CommandBuffer cmdbuf) {
         const auto draw = [&] {
             if (is_indexed) {
                 cmdbuf.drawIndexed(num_indices, num_instances, 0, s32(first_vertex),
@@ -1265,7 +1273,16 @@ void Rasterizer::DrawIndirectRecord(const GraphicsPipeline* pipeline, bool is_in
     const u64 args_offset = base;
     const vk::Buffer counts = count_address != 0 ? count_buffer->Handle() : vk::Buffer{};
     const u64 counts_offset = count_address != 0 ? count_offset : 0;
-    scheduler.Record([=, this](vk::CommandBuffer cmdbuf) {
+    const auto& vs_info_i = pipeline->GetStage(Shader::SwStage::Vertex);
+    const auto* ps_info_i = pipeline->GetStages()[u32(Shader::SwStage::Fragment)];
+    const Breadcrumbs::Crumb crumb{
+        .kind = Breadcrumbs::Kind::DrawIndirect,
+        .hash = {vs_info_i.pgm_hash, ps_info_i ? ps_info_i->pgm_hash : 0},
+        .program = {vs_info_i.pgm_base, ps_info_i ? ps_info_i->pgm_base : 0},
+        .address = indirect.args,
+        .count = {max_count, stride, 0},
+    };
+    scheduler.RecordCrumb(crumb, [=, this](vk::CommandBuffer cmdbuf) {
         predication.BeginDraw(cmdbuf, zpass_query, pred.predicated, predicate_state);
         for (const vk::Pipeline bound : {handle, square}) {
             if (!bound) {
@@ -1356,7 +1373,13 @@ void Rasterizer::DispatchRecord(const ComputePipeline* pipeline, const DrawPredi
         FrameCapture::Dispatch(cs.pgm_hash, dim_x, dim_y, dim_z);
     }
     const auto predicate_state = predication.CapturePredicate();
-    scheduler.Record([=, this](vk::CommandBuffer cmdbuf) {
+    const Breadcrumbs::Crumb crumb{
+        .kind = Breadcrumbs::Kind::Dispatch,
+        .hash = {cs.pgm_hash, 0},
+        .program = {cs.pgm_base, 0},
+        .count = {dim_x, dim_y, dim_z},
+    };
+    scheduler.RecordCrumb(crumb, [=, this](vk::CommandBuffer cmdbuf) {
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, handle);
         predication.BeginDraw(cmdbuf, std::nullopt, pred.predicated, predicate_state);
         cmdbuf.dispatch(dim_x, dim_y, dim_z);
@@ -1405,13 +1428,35 @@ void Rasterizer::DispatchIndirectRecord(const ComputePipeline* pipeline, VAddr a
     }
 
     scheduler.EndRendering();
+    // gow3: GPU 侧先校验 group counts（vk_indirect_guard.h），越界计数清零。
+    // 在管线的资源绑定之前录制：校验自己的管线不得扰乱本次绑定。
+    vk::Buffer args = buffer->Handle();
+    u64 args_offset = base;
+    if (IndirectGuard::Enabled()) {
+        if (!indirect_guard) {
+            indirect_guard = std::make_unique<IndirectGuard>(instance, scheduler);
+        }
+        std::tie(args, args_offset) = indirect_guard->CheckArgs(*buffer, base);
+    }
     pipeline->BindResources(set_writes, push_data);
 
     const vk::Pipeline handle = pipeline->Handle();
-    const vk::Buffer args = buffer->Handle();
-    const u64 args_offset = base;
+    const vk::Buffer raw_args = buffer->Handle();
+    const u64 raw_offset = base;
+    const auto& cs = pipeline->GetStage(Shader::SwStage::Compute);
+    const u32 args_slot = Breadcrumbs::ArgsSlot();
+    const Breadcrumbs::Crumb crumb{
+        .kind = Breadcrumbs::Kind::DispatchIndirect,
+        .hash = {cs.pgm_hash, 0},
+        .program = {cs.pgm_base, 0},
+        .address = address,
+        .count = {0, 0, 0},
+        .args_slot = args_slot,
+    };
     const auto predicate_state = predication.CapturePredicate();
-    scheduler.Record([=, this](vk::CommandBuffer cmdbuf) {
+    scheduler.RecordCrumb(crumb, [=, this](vk::CommandBuffer cmdbuf) {
+        // breadcrumbs：把游戏写的原始参数拷进 host 可见缓冲，卡死报告能显示 GPU 读到的计数。
+        Breadcrumbs::CopyArgs(cmdbuf, raw_args, raw_offset, args_slot);
         cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, handle);
         predication.BeginDraw(cmdbuf, std::nullopt, pred.predicated, predicate_state);
         cmdbuf.dispatchIndirect(args, args_offset);
@@ -2202,7 +2247,11 @@ Rasterizer::ImageDescCacheEntry& Rasterizer::CachedImageDescEntry(const AmdGpu::
                                                                    u64 hash) {
     std::array<u64, 4> key;
     std::memcpy(key.data(), &sharp, sizeof(key));
-    const u32 flags = u32(res.is_written) | u32(res.is_depth) << 1 | u32(res.is_array) << 2;
+    // gow3（上游 b646683）：needs_native 参与 ImageDesc 缓存键，同一 T# 的采样绑定与
+    // load 绑定不得共享一条 ImageDesc（partial height views 依赖该区分）。
+    const u32 flags =
+        u32(res.is_written) | u32(res.is_depth) << 1 | u32(res.is_array) << 2 |
+        u32(res.needs_native) << 3;
     // Two-way set associative: a frame binds a few thousand distinct T#s.
     auto* set = &image_desc_cache[(hash % (image_desc_cache.size() / 2)) * 2];
     const auto matches = [&](const ImageDescCacheEntry& e) {

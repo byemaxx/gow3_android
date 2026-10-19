@@ -130,7 +130,8 @@ class Android1740Tests(unittest.TestCase):
         self.assertEqual(result['identity']['app_version'], '01.02')
         self.assertEqual(set(result['patch_names']), {RES720, 'Skip Intro'})
         self.assertEqual(result['patch_report']['skipped'], {})
-        self.assertEqual(result['patch_report']['write_count'], 13)
+        # 01.02 的 720p 含半分辨率表写入（上游 PR #613）：11 次写入 + Skip Intro 4 次。
+        self.assertEqual(result['patch_report']['write_count'], 15)
         self.assertEqual(patches.selected_patches(self.xml, '01.02', ''), [])
         for name in patches.available_patches(self.xml, '01.02'):
             report, writes = patches.compile_plan(view, self.out, [name])

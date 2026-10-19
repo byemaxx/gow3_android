@@ -48,6 +48,21 @@ data class GamePatch(
     val targets: List<PatchTarget>,
 ) {
     val resolution: String? get() = name.takeIf { it.startsWith("Resolution Patch - ") }?.removePrefix("Resolution Patch - ")
+    /** 补丁页/设置页显示名：统一「宽×高」实际像素尺寸（含 × 排版），档位内部值（480p/1280x800…）
+     *  只作 ini/补丁名键，不直接展示；与 gow3_overlay.cpp resolution_labels、strings 的档位文案一致。 */
+    val displayName: String
+        get() = when (resolution) {
+            null -> name
+            "480p" -> "854×480"
+            "540p" -> "960×540"
+            "720p" -> "1280×720"
+            "900p" -> "1600×900"
+            "1080p" -> "1920×1080"
+            "1440p" -> "2560×1440"
+            "1800p" -> "3200×1800"
+            "4K" -> "3840×2160"
+            else -> resolution!!.replace("x", "×")
+        }
     val fps: String? get() = name.takeIf { it.startsWith("Frame Rate Patch - ") }?.removePrefix("Frame Rate Patch - ")?.removeSuffix(" FPS")
     val group: PatchGroup get() = when {
         resolution != null -> PatchGroup.RESOLUTION

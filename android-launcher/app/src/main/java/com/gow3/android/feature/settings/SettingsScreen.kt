@@ -71,6 +71,9 @@ internal fun SettingsScreen(
     onChangeLanguage: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    // 组合作用域预解析文案（回调/Toast 内不得调用 stringResource）。
+    val saveFailedMsg = stringResource(R.string.settings_save_failed)
+    val importDoneMsg = stringResource(R.string.frame_gen_import_done)
     // 玩家自备 Lossless.dll 状态（常规分类的导入行；change add-native-frame-generation）。
     var dllState by remember { mutableStateOf(losslessDlls.resolve()) }
     var iniValues by remember { mutableStateOf(loadIni(context)) }
@@ -121,7 +124,7 @@ internal fun SettingsScreen(
         if (Gow3Settings.update(gow3IniFile(context), updates)) {
             iniValues = loadIni(context)
         } else {
-            Toast.makeText(context, context.getString(R.string.settings_save_failed), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, saveFailedMsg, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -179,6 +182,10 @@ internal fun SettingsScreen(
                             if (entry.slotId == "language") {
                                 LanguageCard(onChangeLanguage)
                             }
+                            // 按键映射（add-pad-button-mapping）：入口卡，列表在 PadMappingActivity。
+                            if (entry.slotId == "pad_mapping") {
+                                PadMappingCard()
+                            }
                         }
                     }
                 }
@@ -192,7 +199,7 @@ internal fun SettingsScreen(
                                     is com.gow3.android.data.session.ImportResult.Failed ->
                                         Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show()
                                     is com.gow3.android.data.session.ImportResult.Success ->
-                                        Toast.makeText(context, context.getString(R.string.frame_gen_import_done), Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, importDoneMsg, Toast.LENGTH_SHORT).show()
                                     com.gow3.android.data.session.ImportResult.Cancelled -> {}
                                 }
                             }
@@ -207,7 +214,9 @@ internal fun SettingsScreen(
 
 @Composable
 private fun CategoryTabs(selected: LaunchCategory, onSelect: (LaunchCategory) -> Unit) {
-    val context = LocalContext.current
+    // 组合作用域预解析文案（回调/Toast 内不得调用 stringResource）。
+    val saveFailedMsg = stringResource(R.string.settings_save_failed)
+    val importDoneMsg = stringResource(R.string.frame_gen_import_done)
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -215,7 +224,7 @@ private fun CategoryTabs(selected: LaunchCategory, onSelect: (LaunchCategory) ->
         LaunchParams.categories().forEach { category ->
             val active = category == selected
             Text(
-                context.getString(category.titleRes),
+                stringResource(category.titleRes),
                 color = if (active) LauncherColors.textPrimary else LauncherColors.textMuted,
                 fontSize = 12.sp,
                 fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
@@ -352,6 +361,9 @@ private fun StorageRow(
 @Composable
 private fun LosslessImportRow(installed: Boolean, onImport: () -> Unit) {
     val context = LocalContext.current
+    // 组合作用域预解析文案（回调/Toast 内不得调用 stringResource）。
+    val saveFailedMsg = stringResource(R.string.settings_save_failed)
+    val importDoneMsg = stringResource(R.string.frame_gen_import_done)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         com.gow3.android.ui.components.SectionLabel(stringResource(R.string.lossless_row_title))
         Row(

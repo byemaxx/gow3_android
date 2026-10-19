@@ -290,6 +290,11 @@ public:
         return amd_mixed_attachment_samples;
     }
 
+    /// VK_AMD_buffer_marker 是否可用（GPU breadcrumbs 的标记写入机制）
+    bool IsBufferMarkerSupported() const {
+        return buffer_marker;
+    }
+
     /// Returns true when geometry shaders are supported by the device
     bool IsGeometryStageSupported() const {
         return features.geometryShader;
@@ -580,6 +585,7 @@ private:
     bool amd_shader_trinary_minmax{};
     bool nv_framebuffer_mixed_samples{};
     bool amd_mixed_attachment_samples{};
+    bool buffer_marker{};
     bool shader_atomic_float{};
     bool shader_atomic_float2{};
     bool workgroup_memory_explicit_layout{};

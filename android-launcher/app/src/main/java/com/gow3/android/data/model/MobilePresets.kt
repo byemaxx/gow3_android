@@ -6,12 +6,11 @@ import com.gow3.android.data.PatchCatalog
 import com.gow3.android.R
 
 internal data class MobilePreset(val resolution: String, val labelRes: Int) {
-    // JSON 提供分辨率、60 帧目标和补丁组合；其余图形项采用启动器的移动端默认值。
-    // vibration 与 display_stretch 是个人偏好（振动强度、显示端拉伸），不属于预设
-    // 管理的渲染项：预设不写它们，匹配时也不要求它们等于默认值。
-    val settings: Map<String, String> get() = LaunchParams.all
-        .filter { it.key != "vibration" && it.key != "display_stretch" }
-        .associate { it.key to it.defaultValue } + ("render_resolution" to resolution)
+    // 预设只管分辨率档位（经 render_resolution 联动选择分辨率补丁）与六项特效补丁；
+    // 帧率上限、引擎帧率、vsync、帧缓冲与图形项（anisotropy/sharpen/sharpness）是玩家的
+    // 独立选择：预设不写它们，匹配时也不要求它们等于默认值。vibration 与 display_stretch
+    // 同理是个人偏好，不属于预设管理的渲染项。
+    val settings: Map<String, String> get() = mapOf("render_resolution" to resolution)
 }
 
 
@@ -25,7 +24,7 @@ internal object MobilePresets {
     )
     // 预设只挂钩分辨率档位（经 render_resolution 联动选择分辨率补丁）与六项画面
     // 特效关闭补丁；视频跳过类补丁（Skip Intro、按 X 跳过视频）是玩家个人选择，
-    // 不被预设连带开启，也不参与预设匹配判定（跳过开场动画由首页专用开关管理）。
+    // 不被预设连带开启，也不参与预设匹配判定。fps 与图形参数同样独立于预设。
     private val patchNames = setOf(
         "Disable SSAO", "Disable Motion Blur", "Disable Depth of Field", "Disable Bloom",
         "Disable Soft Particles", "Disable Dynamic Shadows",
@@ -41,7 +40,8 @@ internal object MobilePresets {
         }
     }
 
-    /** 仅更新预设管理的图形项及补丁，保留黑屏修复、其他游戏的选择和手柄等个人设置。 */
+    /** 仅更新预设管理的分辨率档位及六项特效补丁，保留黑屏修复、其他游戏的选择、
+     *  fps/图形参数和手柄等个人设置。 */
     fun updates(preset: MobilePreset, catalog: PatchCatalog, ini: Map<String, String>): Map<String, String> {
         require(preset in available(catalog))
         val selected = catalog.selected(ini + preset.settings) + patchNames

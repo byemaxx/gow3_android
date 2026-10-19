@@ -2,6 +2,8 @@ package com.gow3.android.core.settings
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -59,6 +61,37 @@ class FrameGenSettingsTest {
         assertEquals(FrameGenSettings.DEFAULT_MULTIPLIER, c.multiplier)
         // flow scale 越界与倍率同语义：钳制到边界（spec「倍率取值越界」引申），非默认值。
         assertEquals(1.0f, c.flowScale, 0.0001f)
+    }
+
+    @Test fun read_drawerSummaryState() {
+        // 抽屉「Lossless Scaling」行摘要读取语义（change fix-framegen-state-reporting）：
+        // 开启 → 倍率 + flow；关闭（即使倍率非 0）→ 关。
+        val on = FrameGenSettings.read(ini("framegen_enabled=1", "framegen_multiplier=2"))
+        assertTrue(on.enabled)
+        assertEquals(2, on.multiplier)
+        assertEquals(FrameGenSettings.DEFAULT_FLOW_SCALE, on.flowScale, 0.0001f)
+
+        val off = FrameGenSettings.read(ini("framegen_enabled=0", "framegen_multiplier=3"))
+        assertFalse(off.enabled)
+        assertEquals(3, off.multiplier) // 关闭态倍率保留，但 enabled=false 是摘要判据
+    }
+
+    // ---- readStats（HUD 遥测，change fix-framegen-state-reporting）----
+
+    @Test fun readStats_rejectsStaleOrClearedTelemetry() {
+        // 跨会话残留/已清零的遥测（multiplier<2）必须返回 null，HUD 回退单一帧率。
+        assertNull(FrameGenSettings.readStats(ini("source_fps=59.0", "presented_fps=118.0", "multiplier=0")))
+        assertNull(FrameGenSettings.readStats(ini("source_fps=59.0", "presented_fps=118.0", "multiplier=1")))
+        assertNull(FrameGenSettings.readStats(ini("multiplier=2"))) // 缺源/上屏帧率
+        assertNull(FrameGenSettings.readStats(tmp.newFile("missing_" + (seq++) + ".ini"))) // 文件缺失
+    }
+
+    @Test fun readStats_returnsLiveTelemetry() {
+        val s = FrameGenSettings.readStats(ini("source_fps=59.5", "presented_fps=119.0", "multiplier=2"))
+        assertNotNull(s)
+        assertEquals(59.5f, s!!.sourceFps, 0.01f)
+        assertEquals(119.0f, s.presentedFps, 0.01f)
+        assertEquals(2, s.multiplier)
     }
 
     // ---- save（整行保留语义，与 Gow3Settings.update 一致）----

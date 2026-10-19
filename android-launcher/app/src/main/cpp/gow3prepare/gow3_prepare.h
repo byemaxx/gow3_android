@@ -94,8 +94,9 @@ struct Eboot {
     std::vector<std::pair<u64, u64>> segments; ///< (vaddr, vaddr + memsz) per PT_LOAD
 };
 
-/// parse_self: a plaintext PS4 SELF into a readable ELF. false + error on anything unsupported
-/// (encrypted or compressed segments included), the same set prepare.py refuses.
+/// parse_self: a plaintext PS4 SELF or an unpacked little-endian x86-64 ELF (upstream #552)
+/// into a readable ELF image. false + error on anything unsupported (encrypted or compressed
+/// SELF segments included), the same set prepare.py refuses.
 bool ParseSelf(const u8* data, size_t size, std::vector<u8>& elf, std::string& error);
 
 /// eboot_image / eboot_segments of an ELF produced by ParseSelf.

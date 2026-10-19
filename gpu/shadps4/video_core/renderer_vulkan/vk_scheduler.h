@@ -24,6 +24,7 @@
 #include "common/unique_function.h"
 #include "video_core/amdgpu/regs_color.h"
 #include "video_core/amdgpu/regs_primitive.h"
+#include "video_core/renderer_vulkan/vk_breadcrumbs.h"
 #include "video_core/renderer_vulkan/vk_resource_pool.h"
 #include "video_core/renderer_vulkan/vk_semaphore.h"
 
@@ -766,6 +767,29 @@ public:
         }
     }
 
+    /// 移植自 Bloodborne-Android：Record() 的带 breadcrumbs 版本，给一条 draw、dispatch 或
+    /// 会跑着色器的 pass 在 GPU breadcrumbs 里登记（vk_breadcrumbs.h），GPU 挂死时指认它。
+    /// 注意 crumb 的 Note 在调用时机完成（与 Record 的入队同线程同序），func 可延迟执行。
+    template <typename Func>
+    void RecordCrumb(const Breadcrumbs::Crumb& crumb, Func&& func) {
+        if (!Breadcrumbs::Enabled()) {
+            Record(std::forward<Func>(func));
+            return;
+        }
+        const u32 id = Breadcrumbs::Note(crumb_stream, crumb);
+        Record([func = std::forward<Func>(func), stream = crumb_stream,
+                id](vk::CommandBuffer cmdbuf) mutable {
+            Breadcrumbs::Mark(cmdbuf, stream, id, false);
+            func(cmdbuf);
+            Breadcrumbs::Mark(cmdbuf, stream, id, true);
+        });
+    }
+
+    /// 本 scheduler 命令流的 breadcrumbs 流号（StreamCommands() 为关闭时的占位值）。
+    [[nodiscard]] u32 CrumbStream() const noexcept {
+        return crumb_stream;
+    }
+
     /// True when Record() defers commands (and RecordData() copies into chunks).
     [[nodiscard]] bool IsRecordingDeferred() const noexcept {
         return recording_threaded && !direct_mode &&
@@ -951,6 +975,7 @@ private:
     std::atomic<size_t> queued_chunks{0}; ///< recorder_queue.size() for lock-free polling
     bool recorder_sleeping = false; ///< waiting on recorder_cv (guarded by recorder_mutex)
     bool direct_mode = false; ///< the command buffer is recorded on the caller's thread
+    u32 crumb_stream{};       ///< 本命令流的 GPU breadcrumbs 流号（vk_breadcrumbs.h）
     u64 host_copies_issued = 0;
     std::atomic<u64> host_copies_done{0};
     std::atomic<u64> deferred_signals_issued{0}; ///< by the thread recording (A or B)

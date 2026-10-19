@@ -22,10 +22,18 @@
 </p>
 
 <p align="center">
-  <a href="#status-do-projeto"><img src="https://img.shields.io/badge/status-work--in--progress-f0a000?style=flat-square" alt="Status: em desenvolvimento" /></a>
-  <a href="#requisitos"><img src="https://img.shields.io/badge/platform-Android%20%7C%20ARM64-3ddc84?style=flat-square" alt="Plataforma: Android e ARM64" /></a>
-  <a href="#como-funciona"><img src="https://img.shields.io/badge/graphics-Vulkan%20%7C%20Turnip-6f42c1?style=flat-square" alt="Gráficos: Vulkan e Turnip" /></a>
-  <a href="#licença"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue?style=flat-square" alt="Licença: GPL 2.0 ou posterior" /></a>
+  <a href="https://github.com/zFitness/gow3_android/releases/latest"><img src="https://img.shields.io/github/v/release/zFitness/gow3_android?label=release" alt="Última versão" /></a>
+  <a href="https://github.com/zFitness/gow3_android/releases"><img src="https://img.shields.io/github/downloads/zFitness/gow3_android/total?label=downloads" alt="Downloads" /></a>
+  <a href="https://github.com/zFitness/gow3_android/stargazers"><img src="https://img.shields.io/github/stars/zFitness/gow3_android?style=flat" alt="Estrelas" /></a>
+  <a href="#licença"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="Licença: GPL 2.0 ou posterior" /></a>
+  <a href="https://github.com/zFitness/gow3_android/commits"><img src="https://img.shields.io/github/last-commit/zFitness/gow3_android?label=last%20commit" alt="Último commit" /></a>
+  <a href="https://github.com/zFitness/gow3_android/issues"><img src="https://img.shields.io/github/issues/zFitness/gow3_android?label=issues" alt="Issues" /></a>
+  <a href="https://ko-fi.com/zfitness"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white" alt="Apoie no Ko-fi" /></a>
+</p>
+
+<p align="center">
+  <a href="#requisitos"><img src="https://img.shields.io/badge/Android-arm64-3DDC84?logo=android&logoColor=white" alt="Android arm64" /></a>
+  <a href="#como-funciona"><img src="https://img.shields.io/badge/Vulkan-AC162C?logo=vulkan&logoColor=white" alt="Vulkan" /></a>
 </p>
 
 <p align="center">
@@ -122,6 +130,18 @@ dependências e os passos estão em [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 Mais documentação: [mods](docs/MODS.md), [mapa do quadro e upscaler](docs/upscaler.md),
 [trabalho paralelo da GPU](docs/parallel_gpu.md) e o [roadmap](docs/gow3/ROADMAP.md).
+
+## Patrocínio
+
+Se você gosta deste projeto, pode apoiar no [Ko-fi](https://ko-fi.com/zfitness), ou enviar um
+pagamento via Alipay lendo o QR code:
+
+<p align="center">
+  <a href="https://ko-fi.com/zfitness"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white" alt="Apoie no Ko-fi" /></a>
+  <img src="Downloads/收款.jpg" alt="QR code de pagamento Alipay" width="200" />
+</p>
+
+Obrigado a todos que apoiam este projeto!
 
 ## Créditos
 

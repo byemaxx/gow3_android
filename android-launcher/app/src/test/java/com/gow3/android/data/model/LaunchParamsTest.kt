@@ -38,7 +38,8 @@ class LaunchParamsTest {
 
     @Test fun `graphics category holds the image quality params`() {
         assertEquals(
-            setOf("upscaler", "render_resolution", "anisotropy", "sharpen", "sharpness", "display_stretch"),
+            // upscaler 行已随超分收尾移除（时间域路径未接通，run-bionic 硬性 off）
+            setOf("render_resolution", "anisotropy", "sharpen", "sharpness", "display_stretch"),
             LaunchParams.forCategory(LaunchCategory.GRAPHICS).map { it.key }.toSet(),
         )
     }
@@ -69,7 +70,11 @@ class LaunchParamsTest {
             "effect_chromatic_aberration", "effect_dof", "effect_motion_blur", "effect_ssao",
             "effect_game_aa", "effect_dynamic_shadows", "effect_ssr",
             "skip_intro", "mouse_look", "debug_camera", "debug_menu", "overlay_mouse",
+            // preset 在 Android 已无消费方（change D9）；output_res 只由游戏内抽屉的
+            // 「超分输出」组写，不进设置页参数轨道。
             "preset", "output_res", "display_mode",
+            // upscaler 随超分收尾从设置页移除（时间域路径未接通，运行链硬性 off）
+            "upscaler",
             // show_fps 已随引擎 FPS 显示退役（change design D7）：引擎叠加层由 launcher HUD 取代
             "show_fps",
         )) {
@@ -80,7 +85,8 @@ class LaunchParamsTest {
     @Test fun `mobile optimized defaults are not regressed`() {
         val empty = emptyMap<String, String>()
         val byKey = LaunchParams.all.associateBy { it.key }
-        assertEquals("fsr3", LaunchParams.valueOf(empty, byKey.getValue("upscaler")))
+        // upscaler 不在设置页参数轨道（超分硬关闭）；ini 默认与迁移保证 off
+        assertFalse("upscaler" in byKey)
         assertEquals("720p", LaunchParams.valueOf(empty, byKey.getValue("render_resolution")))
         assertEquals("0", LaunchParams.valueOf(empty, byKey.getValue("anisotropy")))
         assertEquals("0", LaunchParams.valueOf(empty, byKey.getValue("sharpen")))
@@ -119,7 +125,7 @@ class LaunchParamsTest {
         assertEquals(setOf("60"), gated.getValue("engine_fps").options.map { it.value }.toSet())
         // 非补丁参数不受 catalog 影响（含无目录时保持可编辑的 display_stretch）。
         assertTrue(noCatalog.getValue("display_stretch").enabled)
-        assertTrue(gated.getValue("upscaler").enabled)
+        assertFalse("upscaler" in gated)
         assertTrue(gated.getValue("sharpness").enabled)
         assertTrue(gated.getValue("display_stretch").enabled)
 
@@ -130,5 +136,24 @@ class LaunchParamsTest {
         }
         val gated1715 = LaunchParams.forCatalog(c1715).associateBy { it.key }
         assertEquals(setOf("60", "120", "240"), gated1715.getValue("engine_fps").options.map { it.value }.toSet())
+    }
+
+    @Test fun `fps_limit tiers are capped by the current engine_fps`() {
+        val byKey = LaunchParams.all.associateBy { it.key }
+        val fpsLimit = byKey.getValue("fps_limit")
+        fun tiers(engineFps: String?): List<String> =
+            LaunchParams.effectiveOptions(
+                fpsLimit,
+                if (engineFps == null) emptyMap() else mapOf("engine_fps" to engineFps),
+            ).map { it.value }
+
+        assertEquals(listOf("30", "60", "0"), tiers("60"))            // 60：上限 60，0=不限
+        assertEquals(listOf("30", "60", "120", "0"), tiers("120"))    // 120：上限 120
+        assertEquals(listOf("30", "60", "120", "240", "0"), tiers("240"))
+        assertEquals(listOf("30", "60", "0"), tiers(null))            // 缺失：按默认 60
+        assertEquals(listOf("30", "60", "0"), tiers("abc"))           // 非法：按默认 60
+        // 非 fps_limit 参数原样返回。
+        val engine = byKey.getValue("engine_fps")
+        assertEquals(engine.options, LaunchParams.effectiveOptions(engine, mapOf("engine_fps" to "120")))
     }
 }

@@ -67,6 +67,21 @@ public class RuntimeInstallerTest {
         RuntimeInstaller.validateRuntime(tree, "com.gow3.android.bionic");
     }
 
+    /** debug 变体包名带 ".debug" 后缀（applicationIdSuffix），payload 仍按基础 id 发布，必须放行。 */
+    @Test
+    public void debugSuffixedApplicationIdAcceptsBaseManifest() throws Exception {
+        File tree = bionicTree(tmp.newFolder());
+        RuntimeInstaller.validateRuntime(tree, "com.gow3.android.bionic.debug");
+    }
+
+    /** 后缀只在尾部剥：中间带 .debug 的异包 id 仍要拒绝。 */
+    @Test
+    public void foreignApplicationIdIsRefusedEvenWithDebugInMiddle() throws Exception {
+        File tree = bionicTree(tmp.newFolder());
+        assertThrows(IllegalStateException.class,
+                () -> RuntimeInstaller.validateRuntime(tree, "com.gow3.android.debug.other"));
+    }
+
     @Test
     public void manifestOfAnotherApplicationIdIsRefused() throws Exception {
         File tree = bionicTree(tmp.newFolder());

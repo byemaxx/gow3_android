@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <limits>
+#include "common/assert.h"
+#include "video_core/renderer_vulkan/vk_breadcrumbs.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_semaphore.h"
-
-#include "common/assert.h"
 
 namespace Vulkan {
 
@@ -42,6 +42,25 @@ void Semaphore::Refresh() {
         }
     } while (!gpu_tick.compare_exchange_weak(this_tick, counter, std::memory_order_release,
                                              std::memory_order_relaxed));
+}
+
+bool Semaphore::WaitFor(u64 tick, u64 timeout_ns) {
+    // 不需要等待：GPU 已经越过该 tick
+    if (IsFree(tick)) {
+        return true;
+    }
+    const vk::SemaphoreWaitInfo wait_info = {
+        .semaphoreCount = 1,
+        .pSemaphores = &semaphore.get(),
+        .pValues = &tick,
+    };
+    const vk::Result result = instance.GetDevice().waitSemaphores(&wait_info, timeout_ns);
+    if (result == vk::Result::eErrorDeviceLost) {
+        Breadcrumbs::ReportDeviceLost("waiting for a submission");
+        ASSERT_MSG(false, "Device lost while waiting for a submission");
+    }
+    Refresh();
+    return result == vk::Result::eSuccess;
 }
 
 void Semaphore::Wait(u64 tick) {

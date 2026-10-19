@@ -22,6 +22,8 @@ jobs:
           python-version: '3.12'
       - name: Audio background and resume regression
         run: python tests/test_audio_bridge.py
+      - name: Upstream Python regression suite
+        run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Native vibration snapshot checks
         run: |
           cc -std=c11 -Wall -Wextra -Werror -I. tests/test_android_vibration.c -o "$RUNNER_TEMP/vibration-ipc"

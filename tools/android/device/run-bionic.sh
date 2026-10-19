@@ -61,30 +61,39 @@ setting() { sed -n "s/^$1=//p" "$GOW3_CONFIG" 2>/dev/null | tail -n 1; }
 # app 的 pad 状态文件（PadBridge.java）与文字请求（角色名：它的触屏键盘）。
 export GOW3_ANDROID_INPUT=1
 export GOW3_PAD_FILE="$base/android-pad.state" GOW3_PAD_QUIET=1
+# 振动回程由 GOW3_PAD_FILE 派生 .vibration 快照，VibrationBridge 消费并处理停止/过期。
 export GOW3_IME_FILE="$base/ime.request"
-# 输出尺寸（output_res：1920x1080、1280x720 或 854x480；缺省 720p）是最终帧和 UI 的尺寸；
-# preset 决定场景尺寸相对它的比例，FSR 3.1 把场景升到输出尺寸。
-upscaler=$(setting upscaler); preset=$(setting preset); output=$(setting output_res)
-# FSR 4（INT8 模型）在 Adreno 上太慢：任何非 off 的值都当作 FSR 3.1。
-case $upscaler in off) ;; *) upscaler=fsr3 ;; esac
-case $preset in 0|1|2|3|4) ;; *) preset=3 ;; esac
+# 存档/读档/删除列表的请求文件(design: launcher 以原生对话框接管呈现,不再由 overlay 自绘)。
+export GOW3_SAVE_DIALOG_FILE="$base/save-dialog.request"
+# 渲染尺寸由 gow3.ini 的 render_resolution（分辨率补丁，准备阶段打进 eboot）决定；
+# 输出 output_res（1920x1080、1280x720 或 854x480；缺省 720p）是 UI/呈现的最终尺寸。
+output=$(setting output_res)
+# 超分硬关闭（change replace-android-fsr3-with-gsr2 收尾决定）：时间域路径在 Android 尚未
+# 接通（UI 合成钩子未验证），ini 的 upscaler 取值一律忽略。ini 默认与一次性迁移均为 off，
+# 这里的硬关闭保证任何来源的取值都不会启用超分。接通后恢复白名单透传 off|gsr2|fsr3。
+upscaler=off
 case $output in 1920x1080|1280x720|854x480) ;; *) output=1280x720 ;; esac
-render=$output
-if [ "$upscaler" != off ]; then
-    case $output:$preset in
-        1920x1080:1) render=1280x720 ;; 1920x1080:2) render=1130x636 ;; 1920x1080:3) render=960x540 ;;
-        1920x1080:4) render=640x360 ;;
-        1280x720:1) render=854x480 ;; 1280x720:2) render=752x424 ;; 1280x720:3) render=640x360 ;;
-        1280x720:4) render=426x240 ;;
-        854x480:1) render=570x320 ;; 854x480:2) render=502x282 ;; 854x480:3) render=428x240 ;;
-        854x480:4) render=284x160 ;;
-    esac
-fi
-if [ "$render" = 1920x1080 ]; then render=; preset=0; fi
-export GOW3_FULLSCREEN=1 GOW3_UPSCALER=$upscaler GOW3_UPSCALE_PRESET=$preset
+export GOW3_FULLSCREEN=1 GOW3_UPSCALER=$upscaler
+# GOW3_RENDER_RES 必须描述【真实补丁场景尺寸】（render_resolution 分辨率补丁打进 eboot 的
+# scene 常量），供运行时 RenderTarget() 匹配游戏渲染目标（ui_draw/合成判定）与 camera
+# 常量就绪前的场景回退。映射取 patches/*.xml 各补丁 Note 的权威尺寸，与
+# SettingsDialog.SCENE_SIZES 同源；unknown/native → 游戏原生 1920x1080。
+render_res=1920x1080
+case $(setting render_resolution) in
+    480p) render_res=854x480 ;; 540p) render_res=960x540 ;; 720p) render_res=1280x720 ;;
+    900p) render_res=1600x900 ;; 1080p) render_res=1920x1080 ;; 1440p) render_res=2560x1440 ;;
+    1800p) render_res=3200x1800 ;; 4K) render_res=3840x2160 ;;
+esac
+# 运行期调试通道：`preset [output [upscaler]]` 每秒轮询热切换（OnFrameStart 消费）；
+# 开关位掩码 250ms 轮询热生效（位含义见 gpu/shim/gow3_toggles.h）。
+# 都放 GOW3_DATA_DIR（gow3data，玩家数据目录）：runtime 升级重展开 gow3port 不会清掉。
+export GOW3_PRESET_FILE="$data_root/gow3.preset"
+export GOW3_TOGGLE_FILE="$data_root/gow3.toggles"
 export GOW3_WINDOW_SIZE=$output
 export GOW3_OUTPUT_RES=$output GOW3_LIVE_RES=0
-if [ -n "$render" ]; then export GOW3_RENDER_RES=$render; else unset GOW3_RENDER_RES; fi
+# scaled_session 标记 + camera 常量就绪前的场景尺寸回退（真实值见上方 render_res 映射）。
+# 桌面 live 路径在 Android 不可达（本脚本恒导出 GOW3_RENDER_RES）。
+export GOW3_RENDER_RES=$render_res
 # GPU 内存是手机的系统 RAM，和游戏的 DMEM 及 Android 共享；纹理收集器按预算工作，
 # 空闲的游戏内存拷贝延后回收。
 # DMEM 基线与 launch_env.py --base-dmem 7104 一致（launcher 同样用 7104）（release 补丁要求 7104MiB）；运行前派生出的

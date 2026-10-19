@@ -21,11 +21,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gow3.android.R
+import com.gow3.android.ui.components.SectionLabel
 
 /**
  * Home 页 GPU 驱动选择下方的「跳过动画」快捷开关：一行开关同时控制补丁目录里的
@@ -40,7 +40,6 @@ internal fun SkipAnimationsCard(
     ini: Map<String, String>,
     onApply: (Map<String, String>) -> Unit,
 ) {
-    val context = LocalContext.current
     var showInfo by remember { mutableStateOf(false) }
     val skipPatches = catalog?.skipVideoPatches.orEmpty()
     val selected = skipPatches.ifEmpty { null }?.let { catalog!!.selected(ini) }
@@ -56,7 +55,7 @@ internal fun SkipAnimationsCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(context.getString(R.string.param_skip_animations), color = LauncherColors.textMuted, fontSize = 13.sp)
+            SectionLabel(stringResource(R.string.param_skip_animations))
             Text(
                 "ⓘ",
                 color = LauncherColors.gold,
@@ -77,8 +76,8 @@ internal fun SkipAnimationsCard(
     }
     if (showInfo) {
         ParamInfoDialog(
-            title = context.getString(R.string.param_skip_animations),
-            message = context.getString(R.string.param_desc_skip_animations),
+            title = stringResource(R.string.param_skip_animations),
+            message = stringResource(R.string.param_desc_skip_animations),
             onDismiss = { showInfo = false },
         )
     }

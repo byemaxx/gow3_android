@@ -31,6 +31,7 @@ class MemoryManager;
 namespace Vulkan {
 
 class GraphicsPipeline;
+class IndirectGuard;
 class Runtime;
 
 /// gow3: predicate state captured on the packet thread and handed to the recording thread (see
@@ -534,6 +535,8 @@ private:
     /// Submissions (prepared draws) kept alive until stage B reaches the position.
     std::deque<std::pair<u64, std::shared_ptr<const void>>> pipe_keepalive;
     std::unique_ptr<DrawPipe> draw_pipe;
+    /// indirect dispatch 的 GPU 侧 group counts 校验（vk_indirect_guard.h），首次用到时创建。
+    std::unique_ptr<IndirectGuard> indirect_guard;
 };
 
 } // namespace Vulkan

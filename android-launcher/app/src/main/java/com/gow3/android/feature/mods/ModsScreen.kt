@@ -183,7 +183,7 @@ private fun PatchCard(patch: GamePatch, checked: Boolean, enabled: Boolean, onTo
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(patch.name, color = LauncherColors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(patch.displayName, color = LauncherColors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     val status = when (patch.validation) {
                         "android-videoout-verified" -> R.string.mods_verified_device
                         "offline-matched" -> R.string.mods_verified_offline
@@ -193,7 +193,7 @@ private fun PatchCard(patch: GamePatch, checked: Boolean, enabled: Boolean, onTo
                     Text(stringResource(status), color = LauncherColors.textMuted, fontSize = 11.sp)
                 }
                 Switch(checked = checked, onCheckedChange = onToggle, enabled = enabled,
-                    modifier = Modifier.semantics { contentDescription = patch.name },
+                    modifier = Modifier.semantics { contentDescription = patch.displayName },
                     colors = SwitchDefaults.colors(checkedTrackColor = LauncherColors.crimson, checkedThumbColor = LauncherColors.gold))
             }
 //            TextButton(onClick = { details = !details }) {

@@ -44,10 +44,18 @@ private const val QQ_GROUP_SCHEME =
 @Composable
 internal fun ContactCard() {
     val context = LocalContext.current
+    // 组合作用域预解析（局部函数/回调内不得调用 stringResource）。
+    val copiedFmt = stringResource(R.string.copied_fmt)
+    val authorLabel = stringResource(R.string.contact_author_label)
+    val qqLabel = stringResource(R.string.contact_qq_label)
+    val telegramLabel = stringResource(R.string.contact_telegram_label)
+    val openLabel = stringResource(R.string.contact_open)
+    val qqNotInstalledMsg = stringResource(R.string.contact_qq_not_installed)
+    val noAppFmt = stringResource(R.string.contact_no_app_fmt)
 
     fun copy(label: String, value: String) {
         copyToClipboard(context, label, value)
-        Toast.makeText(context, context.getString(R.string.copied_fmt, value), Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, copiedFmt.format(value), Toast.LENGTH_SHORT).show()
     }
 
     /** 用 QQ 打开群卡片；未安装 QQ 返回 false。 */
@@ -80,20 +88,20 @@ internal fun ContactCard() {
             letterSpacing = 0.8.sp
         )
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            ContactRow(context.getString(R.string.contact_author_label), AUTHOR)
-            ContactRow(context.getString(R.string.contact_qq_label), QQ_GROUP, context.getString(R.string.contact_open)) {
+            ContactRow(authorLabel, AUTHOR)
+            ContactRow(qqLabel, QQ_GROUP, openLabel) {
                 if (!openQqGroup(context, QQ_GROUP)) {
-                    copyToClipboard(context, context.getString(R.string.contact_qq_label), QQ_GROUP)
+                    copyToClipboard(context, qqLabel, QQ_GROUP)
                     Toast.makeText(
                         context,
-                        context.getString(R.string.contact_qq_not_installed),
+                        qqNotInstalledMsg,
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             }
-            ContactRow(context.getString(R.string.contact_telegram_label), TELEGRAM_HANDLE, context.getString(R.string.contact_open)) {
+            ContactRow(telegramLabel, TELEGRAM_HANDLE, openLabel) {
                 if (!openUrl(context, TELEGRAM_URL)) {
-                    Toast.makeText(context, context.getString(R.string.contact_no_app_fmt, TELEGRAM_URL), Toast.LENGTH_SHORT)
+                    Toast.makeText(context, noAppFmt.format(TELEGRAM_URL), Toast.LENGTH_SHORT)
                         .show()
                 }
             }

@@ -31,8 +31,6 @@ import com.gow3.android.core.settings.Gow3Settings;
  *  size, upscaler, the game's effect patches). Other lines and comments of the file are kept. */
 final class SettingsDialog {
     /** Scene sizes of the presets at the Thor's 1280x720 output (run-gow3.sh). */
-    private static final String[] PRESETS={"Native (1280×720)","Quality (854×480)","Balanced (752×424)",
-        "Performance (640×360)","Ultra performance (426×240)"};
     private static final String[][] EFFECTS={
         {"effect_chromatic_aberration","Chromatic aberration","1"},
         {"effect_dof","Depth of field","1"},
@@ -58,8 +56,16 @@ final class SettingsDialog {
         {"cheat_item","Infinite blood vials and items","Using a blood vial, bullet or other item leaves its count as it was "
             +"(items moved to storage or given away stay too)","0"},
     };
-    private static final String[] UPSCALER_VALUES={"off","fsr3"};
-    private static final String[] UPSCALER_NAMES={"Off (render at 1280×720)","FSR 3.1"};
+    private static final String[] UPSCALER_VALUES={"off","gsr2","fsr3"};
+    private static final String[] UPSCALER_NAMES={"Off","Snapdragon GSR 2","FSR 3.1"};
+    // 超分输出档位（gow3.ini 的 output_res）。渲染场景尺寸由 render_resolution 分辨率补丁
+    // 决定，下面的映射取自 patches/*.xml 各补丁 Note 的权威尺寸（change
+    // replace-android-fsr3-with-gsr2 design D8）；补丁目录新增档位时在此同步。
+    private static final String[][] SCENE_SIZES={
+        {"native","1920x1080"},{"480p","854x480"},{"540p","960x540"},{"720p","1280x720"},
+        {"900p","1600x900"},{"1080p","1920x1080"},{"1440p","2560x1440"},{"1800p","3200x1800"},
+        {"4K","3840x2160"}};
+    private static final String[] OUTPUT_VALUES={"854x480","1280x720","1920x1080"};
     private static final String[] LSFG_VALUES={"0","2","3","4"};
     private static final String[] LSFG_NAMES={"Off","2× frames","3× frames","4× frames"};
     // flow scale 取值域含 0.25 档（LSFG 链支持 0.25–1.00，见 FrameGenSettings.clampFlowScale）。
@@ -144,35 +150,79 @@ final class SettingsDialog {
         return -1;
     }
 
+    /** render_resolution 档位的场景渲染尺寸（补丁 Note 权威值）；未知档位按 native。 */
+    private static String sceneSize(String resolution) {
+        for (String[] entry : SCENE_SIZES) if (entry[0].equals(resolution)) return entry[1];
+        return SCENE_SIZES[0][1];
+    }
+    private static int[] wh(String size) {
+        String[] parts = size.split("x");
+        try { return new int[]{Integer.parseInt(parts[0]), Integer.parseInt(parts[1])}; }
+        catch (Exception ex) { return new int[]{0, 0}; }
+    }
+    /** 输出档位在宽高两个方向都严格大于场景尺寸时才能做超分输出（design D8）。 */
+    private static boolean greater(String candidate, String scene) {
+        int[] c = wh(candidate), s = wh(scene);
+        return c[0] > s[0] && c[1] > s[1];
+    }
+    private static String sizeLabel(String size) {
+        int[] wh = wh(size);
+        return wh[0] + "×" + wh[1];
+    }
+
     void show() {
         load();
         LinearLayout box=new LinearLayout(activity); box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(24),dp(4),dp(24),dp(8));
 
-        // 升采样入口只提供 off / fsr3。运行时的 UPSCALERS 还有 fsr4、fsr411、taa、dlss
-        // （gow3_settings.cpp 的 UpscalerName，见 my-docs/gow3/LAUNCHER.md §3.2），此处刻意不给：
-        // FSR 4 / 4.1.1 在 Adreno 740 上约 470ms 一帧且黑屏（run-gow3.sh 实测）；taa 需要 native
-        // guest 目标的实时路径、dlss 需要 gow3_dlss.dll/nvngx_dlss.dll，都是桌面 N 卡路径，在本
-        // 移植上不成立。要加新升采样器前，先确认它在这套 Vulkan/Turnip 上真能出画面。
-        heading(box,"Upscaling (to 1280×720)");
-        final RadioGroup upscalers=choices(box,UPSCALER_NAMES,indexOf(UPSCALER_VALUES,get("upscaler","fsr3"),1));
-        heading(box,"Render resolution");
-        int preset=0;
-        try { preset=Math.max(0,Math.min(4,Integer.parseInt(get("preset","3")))); } catch (NumberFormatException ignored) { preset=3; }
-        final RadioGroup presets=choices(box,PRESETS,preset);
+        // 升采样入口只提供 off / gsr2 / fsr3，与设置页 LaunchParams 同域（design D12），
+        // 默认 off（超分默认关闭，GSR 2 / FSR 3.1 为可选项）。运行时的 UPSCALERS 还有
+        // fsr4、fsr411、taa、dlss（gow3_settings.cpp 的 UpscalerName），此处刻意不给：
+        // FSR 4 / 4.1.1 在 Adreno 740 上黑屏且极慢；taa 需要 native guest 目标、dlss 需要
+        // 桌面 N 卡 DLL。未知值回落默认 off。
+        heading(box,"Upscaling");
+        final RadioGroup upscalers=choices(box,UPSCALER_NAMES,
+            indexOf(UPSCALER_VALUES,get("upscaler","off"),0));
+
+        heading(box,"Upscaled output");
+        // 只呈现宽高都严格大于当前渲染补丁场景尺寸的输出档位；一个都没有（native/1080p 及
+        // 更高补丁）时不渲染单选组，如实说明。当前 output_res 不在可用集时回落显示第一档，
+        // 只在 Apply 时写盘。
+        final String scene=sceneSize(get("render_resolution","native"));
+        final java.util.List<String> available=new ArrayList<>();
+        for (String candidate : OUTPUT_VALUES) if (greater(candidate,scene)) available.add(candidate);
+        final TextView outputNote=new TextView(activity); outputNote.setTextSize(13); outputNote.setAlpha(0.7f);
+        box.addView(outputNote);
+        final RadioGroup outputs;
+        if (available.isEmpty()) {
+            outputs=null;
+            outputNote.setText("The render resolution patch renders at "+sizeLabel(scene)+
+                " or higher: there is nothing left to upscale to.");
+        } else {
+            String[] names=new String[available.size()];
+            for (int i=0;i<available.size();++i) names[i]=sizeLabel(available.get(i));
+            outputs=choices(box,names,0);
+            String current=get("output_res","1280x720");
+            int selection=available.indexOf(current);
+            if (selection<0) selection=0;
+            ((RadioButton)outputs.getChildAt(selection)).setChecked(true);
+            if (available.indexOf(current)<0 && !"1280x720".equals(current) && !current.isEmpty())
+                outputNote.setText("The saved output "+sizeLabel(current)+
+                    " is not usable with this render resolution.");
+        }
+        RadioGroup.OnCheckedChangeListener upscaling=(g,id) -> {
+            boolean on=checkedIndex(upscalers)!=0;
+            if (outputs!=null) for (int i=0;i<outputs.getChildCount();++i) outputs.getChildAt(i).setEnabled(on);
+            if (outputs==null) return;
+            outputNote.setText(on
+                ? "The render patch draws at "+sizeLabel(scene)+"; the upscaler fills the output above."
+                : "Upscaling is off: the picture is presented without reconstruction.");
+        };
+        upscalers.setOnCheckedChangeListener(upscaling); upscaling.onCheckedChanged(upscalers,0);
         // FSR 3.1 frame generation (frame_generation=1) is not wired: shadps4 has no
         // GOW3_FRAME_GEN consumer and no FSR 3.1 frame-gen patch on this tree, so the
         // option would have been a no-op. LSFG is the only frame-generation path here;
         // tune its multiplier / flow scale / performance mode from the in-game drawer.
-        final TextView presetNote=new TextView(activity); presetNote.setTextSize(13); presetNote.setAlpha(0.7f);
-        box.addView(presetNote);
-        RadioGroup.OnCheckedChangeListener upscaling=(g,id) -> {
-            int upscaler=checkedIndex(upscalers);
-            boolean on=upscaler!=0;
-            for (int i=0;i<presets.getChildCount();++i) presets.getChildAt(i).setEnabled(on);
-            presetNote.setText(on ? "Lower is faster; the upscaler fills the screen." : "Without upscaling the game renders at 1280×720.");
-        };
-        upscalers.setOnCheckedChangeListener(upscaling); upscaling.onCheckedChanged(upscalers,0);
 
         heading(box,"Image");
         final Switch sharpen=toggle(box,"Sharpening","1".equals(get("sharpen","0")));
@@ -243,7 +293,8 @@ final class SettingsDialog {
                 Map<String,String> changed=new LinkedHashMap<>();
                 changed.put("upscaler",UPSCALER_VALUES[Math.max(0,checkedIndex(upscalers))]);
                 changed.put("fps_limit",FPS_VALUES[Math.max(0,checkedIndex(fpsLimit))]);
-                changed.put("preset",String.valueOf(Math.max(0,checkedIndex(presets))));
+                // 超分输出：只在档位组可用时写（无可用档 = 无超分放大，不动 output_res）。
+                if (outputs!=null) changed.put("output_res",available.get(Math.max(0,checkedIndex(outputs))));
                 changed.put("sharpen",sharpen.isChecked() ? "1" : "0");
                 changed.put("sharpness",String.format(Locale.ROOT,"%.2f",sharpness.getProgress()/100f));
                 // show_fps 随引擎 FPS 退役不再写回（见上方注释）。

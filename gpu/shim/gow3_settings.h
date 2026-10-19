@@ -13,18 +13,24 @@
 namespace Gow3Settings {
 
 enum Upscaler : int { UpscalerOff = 0, UpscalerFsr3 = 1, UpscalerFsr4 = 2, UpscalerFsr411 = 3,
-                      UpscalerTaa = 4, UpscalerDlss = 5, UpscalerCount };
+                      UpscalerTaa = 4, UpscalerDlss = 5, UpscalerGsr2 = 6, UpscalerCount };
 /// FSR 4 v07 or FSR 4.1.1: the same inputs, settings and placement in the frame.
 inline bool IsFsr4(int upscaler) {
     return upscaler == UpscalerFsr4 || upscaler == UpscalerFsr411;
+}
+/// Qualcomm Snapdragon GSR 2: the Android default temporal upscaler (same slot as FSR 3.1).
+inline bool IsGsr2(int upscaler) {
+    return upscaler == UpscalerGsr2;
 }
 enum Preset : int { NativeAA = 0, Quality, Balanced, Performance, UltraPerformance, PresetCount };
 enum DebugView : int { DebugNone = 0, DebugReactive = 1, DebugMotion = 2, DebugViewCount };
 
 /// Live output resolutions: the upscaler's output and the UI host targets.
-inline constexpr int OutputWidths[] = {1280, 1920, 2560, 3840};
-inline constexpr int OutputHeights[] = {720, 1080, 1440, 2160};
-inline constexpr int OutputCount = 4;
+/// 854x480 is the Android low tier (run-bionic.sh's whitelist); appended last so the
+/// desktop indices (and OutputDefault) keep their meaning.
+inline constexpr int OutputWidths[] = {1280, 1920, 2560, 3840, 854};
+inline constexpr int OutputHeights[] = {720, 1080, 1440, 2160, 480};
+inline constexpr int OutputCount = 5;
 inline constexpr int OutputDefault = 1; ///< 1920x1080, the game's own size
 
 struct Values {

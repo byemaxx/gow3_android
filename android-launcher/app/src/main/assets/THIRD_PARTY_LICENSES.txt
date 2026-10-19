@@ -36,3 +36,9 @@ is drawn with ZXing core 3.5.4 (Apache-2.0). Menu icons: Material Design icons
 
 FSR 3.1: AMD FidelityFX (MIT) through
 FireBurn/FSR-Vulkan.
+
+Snapdragon Game Super Resolution 2 (the default Android upscaler): the 2-pass
+compute GLSL from SnapdragonStudios/snapdragon-gsr, commit d926f074
+(BSD-3-Clause, Copyright (c) 2024, Qualcomm Innovation Center, Inc.), vendored
+unmodified under gpu/third_party/snapdragon-gsr2/ with derived shader copies in
+gpu/shadps4/video_core/host_shaders/gsr2_*.comp.

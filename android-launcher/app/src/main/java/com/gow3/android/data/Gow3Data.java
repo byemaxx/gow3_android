@@ -23,6 +23,8 @@ public final class Gow3Data {
     public static final String LOSSLESS_DLL = "Lossless.dll";
     private static final String MARKER = ".data-schema";
     private static final String SCHEMA = "1\n";
+    /** 一次性 upscaler→off 迁移的幂等标记（change replace-android-fsr3-with-gsr2）。 */
+    private static final String UPSCALER_MIGRATION_MARKER = "upscaler_default_off";
 
     private Gow3Data() {}
 
@@ -56,6 +58,7 @@ public final class Gow3Data {
             copyFileAtomically(defaultConfig, new File(data, CONFIG));
         if (!new File(data, CONFIG).isFile()) throw new IOException("Cannot create GOW3 configuration");
         retireShowFps(new File(data, CONFIG));
+        switchDefaultUpscalerToOff(new File(data, CONFIG), new File(data, UPSCALER_MIGRATION_MARKER));
         Files.write(new File(data, MARKER).toPath(), SCHEMA.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
     }
 
@@ -98,6 +101,48 @@ public final class Gow3Data {
         int semi = original.indexOf(';'), hash = original.indexOf('#');
         int cut = semi >= 0 && (hash < 0 || semi < hash) ? semi : hash;
         return cut >= 0 ? " " + original.substring(cut).trim() : "";
+    }
+
+    /**
+     * 一次性迁移（change replace-android-fsr3-with-gsr2）：超分默认关闭——把 gow3.ini 的
+     * upscaler= 行改写为 off（键缺失则追加），只动这一行、保留行内注释与其它行。
+     * 背景：FSR 3.1 在 Adreno 上被玩家判定为无效路径，GSR 2 / FSR 3.1 保留为可选项，
+     * 默认不开启。无 marker 时执行；ini 写失败时 marker 不落盘、下次启动重试；
+     * marker 之后的玩家手动选择不再被覆盖；已为 off 时只补 marker（幂等）。
+     */
+    private static void switchDefaultUpscalerToOff(File config, File marker) throws IOException {
+        if (marker.isFile()) return;
+        java.util.List<String> lines = Files.readAllLines(config.toPath(), java.nio.charset.StandardCharsets.UTF_8);
+        boolean found = false, changed = false;
+        for (int i = 0; i < lines.size(); i++) {
+            String trimmed = lines.get(i).trim();
+            if (!trimmed.startsWith("upscaler")) continue;
+            String rest = trimmed.substring("upscaler".length());
+            if (rest.isEmpty() || (rest.charAt(0) != '=' && !Character.isWhitespace(rest.charAt(0)))) continue;
+            found = true;
+            if (!rest.substring(rest.indexOf('=') + 1).trim().equals("off")) {
+                lines.set(i, "upscaler=off" + trailingComment(lines.get(i)));
+                changed = true;
+            }
+            break;
+        }
+        if (!found) {
+            lines.add("upscaler=off");
+            changed = true;
+        }
+        if (changed) {
+            FileOutputStream out = new FileOutputStream(config);
+            try {
+                for (String line : lines) {
+                    out.write((line + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+                out.getFD().sync();
+            } finally {
+                out.close();
+            }
+        }
+        // marker 最后写：ini 写入抛异常时不落盘，迁移在下次启动重试。
+        Files.write(marker.toPath(), "1\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
     }
 
     private static void ensureDirectory(File dir) throws IOException {

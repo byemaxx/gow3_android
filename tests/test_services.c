@@ -139,6 +139,74 @@ int main(void) {
     assert(utf8_field_ok(label,sizeof(label)));
     saved_param_ready=0;                                 /* 其余用例回到"没有元数据" */
 
+    /* 原生桥(GOW3_SAVE_DIALOG_FILE):请求写出、握手、应答、交接超时回退。 */
+    const char *bridge="/tmp/gow3-save-dialog.request";
+    setenv("GOW3_SAVE_DIALOG_FILE",bridge,1);
+    setenv("GOW3_SAVE_DIALOG_HANDOFF_TIMEOUT","1",1);
+    unlink(bridge); unlink("/tmp/gow3-save-dialog.request.result");
+    unlink("/tmp/gow3-save-dialog.request.tmp");
+
+    /* 请求写出,内容按 design D1:ok / 类型(2 读取) / 条目数 / 每条目 3 行。 */
+    assert(save_init()==0 && save_open(list)==0 && save_status()==DIALOG_RUNNING);
+    FILE *req=fopen(bridge,"r");
+    assert(req);
+    {
+        char line[64];
+        assert(fgets(line,sizeof(line),req) && !strcmp(line,"ok\n"));
+        assert(fgets(line,sizeof(line),req) && !strcmp(line,"2\n"));
+        assert(fgets(line,sizeof(line),req) && !strcmp(line,"3\n"));
+        assert(fgets(line,sizeof(line),req) && !strcmp(line,"New save\n"));
+    }
+    fclose(req);
+    assert(save_dialog_bridge_request_pending(bridge)); /* 请求文件还在 = 没接手 */
+
+    /* 请求文件被删 = launcher 接手,列表进入应答阶段仍保持运行。 */
+    unlink(bridge);
+    assert(save_status()==DIALOG_RUNNING);
+
+    /* 应答 "ok 2" → 选 SAVE0002(条目:New save/SAVE0001/SAVE0002)。 */
+    req=fopen("/tmp/gow3-save-dialog.request.result","w");
+    assert(req); fprintf(req,"ok 2\n"); fclose(req);
+    assert(save_status()==DIALOG_FINISHED && save_result(out)==0 && !strcmp(chosen,"SAVE0002"));
+    memcpy(&value,out+4,4); assert(value==0);
+    memcpy(&value,out+8,4); assert(value==1);
+    assert(save_term()==0);
+
+    /* 应答 "cancel" → 交还取消结果。 */
+    assert(save_init()==0 && save_open(list)==0 && save_status()==DIALOG_RUNNING);
+    unlink(bridge);
+    assert(save_status()==DIALOG_RUNNING);
+    req=fopen("/tmp/gow3-save-dialog.request.result","w");
+    assert(req); fprintf(req,"cancel\n"); fclose(req);
+    assert(save_status()==DIALOG_FINISHED && save_result(out)==0);
+    memcpy(&value,out+4,4); assert(value==SAVE_RESULT_CANCELED);
+    assert(save_term()==0);
+
+    /* 应答索引越界(跨进程外部输入被写坏成 ok 99,条目只有 3 个):按取消处理,不得越界读。 */
+    assert(save_init()==0 && save_open(list)==0 && save_status()==DIALOG_RUNNING);
+    unlink(bridge);
+    assert(save_status()==DIALOG_RUNNING);
+    req=fopen("/tmp/gow3-save-dialog.request.result","w");
+    assert(req); fprintf(req,"ok 99\n"); fclose(req);
+    assert(save_status()==DIALOG_FINISHED && save_result(out)==0);
+    memcpy(&value,out+4,4); assert(value==SAVE_RESULT_CANCELED);
+    assert(save_term()==0);
+
+    /* 无人接手且超过交接超时 → 回退 overlay 列表,选择并入原有分支。 */
+    choice_cancelled=0; choice_next=1;
+    assert(save_init()==0 && save_open(list)==0 && save_status()==DIALOG_RUNNING);
+    sleep(2); /* 超过 1 秒交接超时 */
+    assert(save_status()==DIALOG_FINISHED && !choice_cancelled);
+    assert(!save_dialog_bridge_request_pending(bridge)); /* 回退后请求文件被删,迟到的 launcher 不会叠对话框 */
+    assert(save_result(out)==0 && !strcmp(chosen,"SAVE0001"));
+    assert(save_term()==0);
+
+    unsetenv("GOW3_SAVE_DIALOG_FILE");
+    unsetenv("GOW3_SAVE_DIALOG_HANDOFF_TIMEOUT");
+    unlink(bridge);
+    unlink("/tmp/gow3-save-dialog.request.result");
+    unlink("/tmp/gow3-save-dialog.request.tmp");
+
     /* PlayGo: installed, full speed, progress never divides by zero. */
     int32_t handle=0; uint64_t progress[2]; int32_t speed; uint16_t chunk=0;
     assert(playgo_init(NULL)==0 && playgo_open(&handle,NULL)==0);

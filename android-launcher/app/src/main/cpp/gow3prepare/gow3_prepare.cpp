@@ -54,13 +54,22 @@ bool ParseSelf(const u8* data, size_t size, std::vector<u8>& elf, std::string& e
     if (!Span(buffer, 0, 4, magic, error)) {
         return false;
     }
+    static const u8 kElfMagic[4] = {0x7f, 'E', 'L', 'F'};
     static const u8 kSelfMagic[4] = {'O', 0x15, '=', 0x1d};
-    if (std::memcmp(magic, kSelfMagic, 4) != 0) {
-        error = "expected PS4 SELF";
+    // 上游 #552：除 SELF 容器外，也接受文件偏移 0 的解包 little-endian x86-64 ELF。
+    // 解包 ELF 没有 SELF 段表，段数据本就按程序头的文件偏移排列。
+    const bool plain_elf = std::memcmp(magic, kElfMagic, 4) == 0;
+    u16 count = 0;
+    size_t base = 0;
+    if (plain_elf) {
+        // ELF 头在偏移 0，无需跳过 SELF 头。
+    } else if (std::memcmp(magic, kSelfMagic, 4) == 0) {
+        count = Read<u16>(buffer.data() + 24);
+        base = 32 + static_cast<size_t>(count) * 32;
+    } else {
+        error = "expected PS4 SELF or ELF";
         return false;
     }
-    const u16 count = Read<u16>(buffer.data() + 24);
-    const size_t base = 32 + static_cast<size_t>(count) * 32;
     // Elf64_Ehdr after the SELF header: e_ident[16], e_type, e_machine, e_version, e_entry,
     // e_phoff, e_shoff, e_flags, e_ehsize, e_phentsize, e_phnum, ...
     if (!InRange(base, 64, buffer.size())) {
@@ -102,7 +111,8 @@ bool ParseSelf(const u8* data, size_t size, std::vector<u8>& elf, std::string& e
         ph.push_back(p);
     }
 
-    size_t end = 0;
+    const size_t header_end = static_cast<size_t>(phoff + phnum * 56);
+    size_t end = header_end;
     for (const auto& p : ph) {
         end = std::max(end, static_cast<size_t>(p.offset + p.filesz));
     }
@@ -110,8 +120,17 @@ bool ParseSelf(const u8* data, size_t size, std::vector<u8>& elf, std::string& e
         error = "probe image exceeds 512 MiB limit";
         return false;
     }
+    if (plain_elf) {
+        // 解包 ELF：先校验引用字节范围（截断的段/程序头在此被拦下），再原样截取
+        // [0, end)——ELF 文件字节已经是镜像布局，无需 SELF 那样的段拼装与覆盖校验。
+        if (!InRange(0, end, buffer.size())) {
+            error = "truncated ELF image";
+            return false;
+        }
+        elf.assign(buffer.data(), buffer.data() + end);
+        return true;
+    }
     elf.assign(end, 0);
-    const size_t header_end = static_cast<size_t>(phoff + phnum * 56);
     if (!InRange(base, header_end, buffer.size())) {
         error = "truncated SELF header";
         return false;

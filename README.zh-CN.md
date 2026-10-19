@@ -20,10 +20,18 @@
 </p>
 
 <p align="center">
-  <a href="#项目状态"><img src="https://img.shields.io/badge/status-work--in--progress-f0a000?style=flat-square" alt="项目状态：开发中" /></a>
-  <a href="#系统要求"><img src="https://img.shields.io/badge/platform-Android%20%7C%20ARM64-3ddc84?style=flat-square" alt="平台：Android 和 ARM64" /></a>
-  <a href="#工作原理"><img src="https://img.shields.io/badge/graphics-Vulkan%20%7C%20Turnip-6f42c1?style=flat-square" alt="图形：Vulkan 和 Turnip" /></a>
-  <a href="#许可证"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue?style=flat-square" alt="许可证：GPL 2.0 或更高版本" /></a>
+  <a href="https://github.com/zFitness/gow3_android/releases/latest"><img src="https://img.shields.io/github/v/release/zFitness/gow3_android?label=release" alt="最新发布" /></a>
+  <a href="https://github.com/zFitness/gow3_android/releases"><img src="https://img.shields.io/github/downloads/zFitness/gow3_android/total?label=downloads" alt="下载量" /></a>
+  <a href="https://github.com/zFitness/gow3_android/stargazers"><img src="https://img.shields.io/github/stars/zFitness/gow3_android?style=flat" alt="Stars" /></a>
+  <a href="#许可证"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="许可证：GPL 2.0 或更高版本" /></a>
+  <a href="https://github.com/zFitness/gow3_android/commits"><img src="https://img.shields.io/github/last-commit/zFitness/gow3_android?label=last%20commit" alt="最近提交" /></a>
+  <a href="https://github.com/zFitness/gow3_android/issues"><img src="https://img.shields.io/github/issues/zFitness/gow3_android?label=issues" alt="Issues" /></a>
+  <a href="https://ko-fi.com/zfitness"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white" alt="在 Ko-fi 上支持我" /></a>
+</p>
+
+<p align="center">
+  <a href="#系统要求"><img src="https://img.shields.io/badge/Android-arm64-3DDC84?logo=android&logoColor=white" alt="Android arm64" /></a>
+  <a href="#工作原理"><img src="https://img.shields.io/badge/Vulkan-AC162C?logo=vulkan&logoColor=white" alt="Vulkan" /></a>
 </p>
 
 <p align="center">
@@ -108,6 +116,17 @@ Android 端仍在真机验证中，暂无稳定的性能数据。
 
 更多文档：[模组](docs/MODS.md)、[帧图与放大器](docs/upscaler.md)、[GPU 并行工作](docs/parallel_gpu.md)
 与[路线图](docs/gow3/ROADMAP.md)。
+
+## 赞助
+
+如果你喜欢这个项目，欢迎通过 [Ko-fi](https://ko-fi.com/zfitness) 赞助支持我，或用支付宝扫码收款：
+
+<p align="center">
+  <a href="https://ko-fi.com/zfitness"><img src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white" alt="在 Ko-fi 上支持我" /></a>
+  <img src="Downloads/收款.jpg" alt="支付宝收款码" width="200" />
+</p>
+
+感谢每一位赞助者的支持！
 
 ## 致谢
 

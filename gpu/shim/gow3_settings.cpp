@@ -167,6 +167,9 @@ Values& Get() {
 }
 
 void Load() {
+    // 游戏进程的 stdout 经 app 侧管道落盘（android-game.log）：默认块缓冲会让排障用的
+    // 少量 printf 迟迟不出现。改为行缓冲，所有诊断行即时可见。
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
     auto& v = Get();
     if (FILE* file = std::fopen(Path(), "r")) {
         char line[256];
@@ -183,10 +186,26 @@ void Load() {
         std::printf("Settings: %s\n", Path());
     }
     // Environment overrides (scripts, A/B tests).
+    // Android (GOW3_ANDROID_INPUT, run-bionic.sh exports it unconditionally) falls back to
+    // UpscalerOff: FSR 3.1 is the path the player judged ineffective there. Desktop keeps
+    // falling back to FSR 3.1, unchanged.
+    const bool android = [] {
+        const char* env = std::getenv("GOW3_ANDROID_INPUT");
+        return env && env[0];
+    }();
     if (const char* env = std::getenv("GOW3_UPSCALER")) {
-        v.upscaler = UpscalerOff;
+        bool matched = false;
         for (int u = 0; u < UpscalerCount; ++u) {
-            if (std::strcmp(env, UpscalerName(u)) == 0) v.upscaler = u;
+            if (std::strcmp(env, UpscalerName(u)) == 0) {
+                v.upscaler = u;
+                matched = true;
+            }
+        }
+        if (!matched) {
+            v.upscaler = UpscalerOff;
+            if (android) {
+                std::printf("Upscaler: GOW3_UPSCALER=%s is not available on Android; using off\n", env);
+            }
         }
     }
     const std::pair<const char*, const char*> env_keys[] = {
@@ -231,28 +250,41 @@ bool GraphicsNeedRestart() {
 
 void ConfigureUpscalerSupport(bool fsr4, bool fsr411) {
     auto& v = Get();
+    // Android (GOW3_ANDROID_INPUT) falls back to UpscalerOff — FSR 3.1 is the path the player
+    // judged ineffective on Adreno. Desktop keeps FSR 3.1, unchanged.
+    const bool android = [] {
+        const char* env = std::getenv("GOW3_ANDROID_INPUT");
+        return env && env[0];
+    }();
+    const Upscaler fallback = android ? UpscalerOff : UpscalerFsr3;
+    const char* fallback_label = android ? "off" : "FSR 3.1";
     v.fsr4_supported = fsr4;
     v.fsr411_supported = fsr4 && fsr411;
     const int requested = v.upscaler;
     if ((requested == UpscalerFsr4 && !v.fsr4_supported) ||
         (requested == UpscalerFsr411 && !v.fsr411_supported)) {
-        v.fsr4_problem = "GPU does not support the selected FSR 4 shaders; using FSR 3.1";
-        std::printf("Upscaler: %s unsupported on this GPU; falling back to FSR 3.1 before the first frame\n",
-                    UpscalerName(requested));
-        v.upscaler = UpscalerFsr3;
+        v.fsr4_problem = android ? "GPU does not support the selected FSR 4 shaders; using off"
+                                 : "GPU does not support the selected FSR 4 shaders; using FSR 3.1";
+        std::printf("Upscaler: %s unsupported on this GPU; falling back to %s before the first frame\n",
+                    UpscalerName(requested), fallback_label);
+        v.upscaler = fallback;
     }
 }
 
 void ConfigureDlssSupport(bool available, const char* problem) {
     auto& v = Get();
+    const bool android = [] {
+        const char* env = std::getenv("GOW3_ANDROID_INPUT");
+        return env && env[0];
+    }();
     v.dlss_supported = available;
     static std::string kept;
     kept = problem ? problem : "";
     v.dlss_problem = available || kept.empty() ? nullptr : kept.c_str();
     if (v.upscaler == UpscalerDlss && !available) {
-        std::printf("Upscaler: DLSS unavailable (%s); falling back to FSR 3.1\n",
-                    kept.empty() ? "gow3_dlss.dll or nvngx_dlss.dll missing" : kept.c_str());
-        v.upscaler = UpscalerFsr3;
+        std::printf("Upscaler: DLSS unavailable (%s); falling back to %s\n", kept.empty() ? "gow3_dlss.dll or nvngx_dlss.dll missing" : kept.c_str(),
+                    android ? "off" : "FSR 3.1");
+        v.upscaler = android ? UpscalerOff : UpscalerFsr3;
     }
 }
 
@@ -372,7 +404,8 @@ const char* PresetName(int preset) {
 }
 
 const char* UpscalerName(int upscaler) {
-    static constexpr const char* names[UpscalerCount] = {"off", "fsr3", "fsr4", "fsr411", "taa", "dlss"};
+    static constexpr const char* names[UpscalerCount] = {"off", "fsr3", "fsr4", "fsr411", "taa", "dlss",
+                                                         "gsr2"};
     return names[std::clamp(upscaler, 0, UpscalerCount - 1)];
 }
 

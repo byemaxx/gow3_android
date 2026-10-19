@@ -351,6 +351,8 @@ bool Instance::CreateDevice() {
     amd_mixed_attachment_samples = add_extension(VK_AMD_MIXED_ATTACHMENT_SAMPLES_EXTENSION_NAME);
     shader_atomic_float = add_extension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME);
     shader_atomic_float2 = add_extension(VK_EXT_SHADER_ATOMIC_FLOAT_2_EXTENSION_NAME);
+    // GPU breadcrumbs 的标记写入机制（vk_breadcrumbs.h）；缺失时取证降级，不影响渲染。
+    buffer_marker = add_extension(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
     if (shader_atomic_float2) {
         shader_atomic_float2_features =
             feature_chain.get<vk::PhysicalDeviceShaderAtomicFloat2FeaturesEXT>();

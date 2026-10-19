@@ -95,6 +95,8 @@ private data class ActiveDownload(val asset: DriverAsset, val received: Long, va
 @Composable
 internal fun DriverDownloadDialog(onDismiss: () -> Unit, onInstalled: () -> Unit) {
     val context = LocalContext.current
+    // 组合作用域预解析（回调内不得调用 stringResource）。
+    val doneFmt = stringResource(R.string.driver_dl_done_fmt)
     val scope = rememberCoroutineScope()
 
     var catalog by remember { mutableStateOf<DriverSourceCatalog?>(null) }
@@ -168,7 +170,7 @@ internal fun DriverDownloadDialog(onDismiss: () -> Unit, onInstalled: () -> Unit
                             downloadedUrls = DownloadedMarks.read(context)
                             Toast.makeText(
                                 context,
-                                context.getString(R.string.driver_dl_done_fmt, install.name),
+                                doneFmt.format(install.name),
                                 Toast.LENGTH_SHORT,
                             ).show()
                             onInstalled()

@@ -58,7 +58,7 @@ internal fun ParamRow(param: LaunchParam, values: Map<String, String>, save: (St
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(context.getString(param.labelRes), color = LauncherColors.textMuted, fontSize = 13.sp)
+            Text(stringResource(param.labelRes), color = LauncherColors.textMuted, fontSize = 13.sp)
             if (param.descriptionRes != null) {
                 Text(
                     "ⓘ",
@@ -80,7 +80,9 @@ internal fun ParamRow(param: LaunchParam, values: Map<String, String>, save: (St
                 colors = SwitchDefaults.colors(checkedTrackColor = LauncherColors.crimson, checkedThumbColor = LauncherColors.gold),
             )
         } else {
-            var expanded by remember(param.options, param.enabled) { mutableStateOf(false) }
+            // 生效档位：fps_limit 受当前 engine_fps 约束（上限不超过引擎帧率，0=不限除外）。
+            val options = LaunchParams.effectiveOptions(param, values)
+            var expanded by remember(options, param.enabled) { mutableStateOf(false) }
             Box {
                 Text(
                     selectedLabel(context, values, param) + "  ▾",
@@ -95,9 +97,9 @@ internal fun ParamRow(param: LaunchParam, values: Map<String, String>, save: (St
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 )
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    param.options.forEach { option ->
+                    options.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(context.getString(option.labelRes)) },
+                            text = { Text(stringResource(option.labelRes)) },
                             onClick = {
                                 expanded = false
                                 save(param.key, option.value)
@@ -110,8 +112,8 @@ internal fun ParamRow(param: LaunchParam, values: Map<String, String>, save: (St
     }
     if (showInfo && param.descriptionRes != null) {
         ParamInfoDialog(
-            title = context.getString(param.labelRes),
-            message = context.getString(param.descriptionRes),
+            title = stringResource(param.labelRes),
+            message = stringResource(param.descriptionRes),
             onDismiss = { showInfo = false },
         )
     }

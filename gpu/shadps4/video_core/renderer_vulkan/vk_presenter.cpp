@@ -11,6 +11,7 @@
 #include "sdl_window.h"
 #include "video_core/buffer_cache/buffer.h"
 #include "video_core/renderdoc.h"
+#include "video_core/renderer_vulkan/vk_breadcrumbs.h"
 #include "video_core/renderer_vulkan/vk_platform.h"
 #include "gow3_overlay.h"
 #include "gow3_settings.h"
@@ -285,6 +286,24 @@ void Presenter::RecreateFrame(Frame* frame, u32 width, u32 height) {
     frame->is_hdr = swapchain.GetHDR();
 }
 
+// 等待 present 相关的 fence；超过 10 秒说明 GPU 无进展，先输出一次 breadcrumbs 卡死报告
+// （只打一次）再继续等，等待语义不变。device lost 时先给 breadcrumbs 出报告再返回错误。
+static vk::Result WaitPresentFence(vk::Device device, vk::Fence fence) {
+    vk::Result result{};
+    while (true) {
+        result = device.waitForFences(fence, vk::True, 10'000'000'000ull);
+        if (result == vk::Result::eTimeout) {
+            Breadcrumbs::ReportStuck("waiting for a frame");
+            continue;
+        }
+        break;
+    }
+    if (result == vk::Result::eErrorDeviceLost) {
+        Breadcrumbs::ReportDeviceLost("waiting for a frame");
+    }
+    return result;
+}
+
 Frame* Presenter::PrepareLastFrame() {
     if (last_submit_frame == nullptr) {
         return nullptr;
@@ -292,14 +311,20 @@ Frame* Presenter::PrepareLastFrame() {
 
     Frame* frame = last_submit_frame;
 
+    // 等待上一帧的 present fence；超过 10 秒说明 GPU 无进展，先输出一次 breadcrumbs
+    // 卡死报告再继续等（报告只打一次），等待语义不变。
     while (true) {
         vk::Result result = instance.GetDevice().waitForFences(frame->present_done, false,
-                                                               std::numeric_limits<u64>::max());
+                                                               10'000'000'000ull);
         if (result == vk::Result::eSuccess) {
             break;
         }
         if (result == vk::Result::eTimeout) {
+            Breadcrumbs::ReportStuck("waiting for a frame");
             continue;
+        }
+        if (result == vk::Result::eErrorDeviceLost) {
+            Breadcrumbs::ReportDeviceLost("waiting for a frame");
         }
         ASSERT_MSG(result != vk::Result::eErrorDeviceLost,
                    "Device lost during waiting for a frame");
@@ -507,7 +532,12 @@ Frame* Presenter::PrepareFrame(const Libraries::VideoOut::BufferAttributeGroup& 
     // the post process pass still sRGB encoded and has to be decoded there instead.
     pp_settings.srgb_input =
         attribute.attrib.pixel_format == Libraries::VideoOut::PixelFormat::A2R10G10B10Srgb;
-    pp_pass.Render(cmdbuf, image_view, image_size, *frame, pp_settings);
+    // GPU breadcrumbs：登记后处理 pass（此处已在 direct mode，闭包立即执行）。
+    draw_scheduler.RecordCrumb({.kind = Breadcrumbs::Kind::Pass, .name = "post process"},
+                               [&](vk::CommandBuffer rec_cmdbuf) {
+                                   pp_pass.Render(rec_cmdbuf, image_view, image_size, *frame,
+                                                  pp_settings);
+                               });
     if (frame_dump) {
         // The presented image as the swapchain blit reads it (General after the pass).
         const vk::MemoryBarrier2 done{.srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,
@@ -703,7 +733,12 @@ void Presenter::PresentLoadingFrame() {
                            range);
     barrier(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eColorAttachmentOptimal,
             vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eColorAttachmentWrite);
-    Gow3Overlay::Render(cmdbuf, swapchain.ImageView(), extent);
+    // GPU breadcrumbs：登记 overlay pass（present_scheduler 非线程化，闭包立即执行）。
+    present_scheduler.RecordCrumb({.kind = Breadcrumbs::Kind::Pass, .name = "overlay"},
+                                  [&](vk::CommandBuffer rec_cmdbuf) {
+                                      Gow3Overlay::Render(rec_cmdbuf, swapchain.ImageView(),
+                                                          extent);
+                                  });
     release_to_app();
     SubmitInfo info{};
     info.AddWait(swapchain.GetImageAcquiredSemaphore());
@@ -720,8 +755,7 @@ void Presenter::PresentLoadingFrame() {
     }
     present_scheduler.Flush(info);
     if (present_fence) {
-        const auto waited = instance.GetDevice().waitForFences(present_fence, vk::True,
-                                                               std::numeric_limits<u64>::max());
+        const auto waited = WaitPresentFence(instance.GetDevice(), present_fence);
         instance.GetDevice().destroyFence(present_fence, nullptr);
         ASSERT_MSG(waited == vk::Result::eSuccess,
                    "Waiting before the AHB present export failed: {}", vk::to_string(waited));
@@ -896,7 +930,12 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool is_game_frame)
                                vk::PipelineStageFlagBits::eAllCommands,
                                vk::DependencyFlagBits::eByRegion, {}, {}, post_barriers);
         if (overlay) {
-            Gow3Overlay::Render(cmdbuf, swapchain.ImageView(), extent);
+            // GPU breadcrumbs：登记 overlay pass（present_scheduler 非线程化，闭包立即执行）。
+            present_scheduler.RecordCrumb({.kind = Breadcrumbs::Kind::Pass, .name = "overlay"},
+                                          [&](vk::CommandBuffer rec_cmdbuf) {
+                                              Gow3Overlay::Render(rec_cmdbuf,
+                                                                  swapchain.ImageView(), extent);
+                                          });
             const auto [release_src, release_dst] = AhbOwnershipEnabled()
                                                       ? swapchain.ReleaseQueues()
                                                       : std::pair<u32, u32>{VK_QUEUE_FAMILY_IGNORED,
@@ -957,8 +996,7 @@ void Presenter::Present(Frame* frame, bool is_reusing_frame, bool is_game_frame)
     // submit). The submission above signals frame->present_done, so wait for it here. A
     // VkSwapchainKHR needs none of this, hence the swapchain's own answer.
     if (swapchain.NeedsSubmittedBeforePresent()) {
-        const auto waited = instance.GetDevice().waitForFences(frame->present_done, vk::True,
-                                                               std::numeric_limits<u64>::max());
+        const auto waited = WaitPresentFence(instance.GetDevice(), frame->present_done);
         ASSERT_MSG(waited == vk::Result::eSuccess, "Waiting before the AHB present export failed: {}",
                    vk::to_string(waited));
     }
@@ -1039,8 +1077,11 @@ void Presenter::WriteLsfgStats() {
         std::fclose(f);
         std::rename(tmp.c_str(), path.c_str());
         lsfg_stats_active = true;
-    } else if (lsfg_stats_active) {
-        // 关闭/引擎失败：清零一次，HUD 回单一帧率（spec 语义）。
+        lsfg_stats_cleared = false; // 引擎激活：下次关闭需再清一次
+    } else if (!lsfg_stats_cleared) {
+        // 关闭/引擎失败/从未激活：清零一次，HUD 回单一帧率（spec 语义）。不依赖本会话
+        // 是否曾激活——上一会话残留的 framegen.stats（倍率≥2）也必须在此被清掉，
+        // 否则 HUD 会把它当成实时插帧遥测显示「LSFG Nx」。
         std::string path = state_path;
         path = path.substr(0, path.rfind('/') + 1) + "framegen.stats";
         std::string tmp = path + ".tmp";
@@ -1050,6 +1091,7 @@ void Presenter::WriteLsfgStats() {
         std::fclose(f);
         std::rename(tmp.c_str(), path.c_str());
         lsfg_stats_active = false;
+        lsfg_stats_cleared = true; // 本会话只清一次：之后每帧只有布尔判断，无 I/O
     }
 }
 
@@ -1298,7 +1340,12 @@ bool Presenter::PresentWithLsfg(Frame* frame) {
                                vk::PipelineStageFlagBits::eAllCommands,
                                vk::DependencyFlagBits::eByRegion, {}, {}, post_barriers);
         if (overlay) {
-            Gow3Overlay::Render(cmdbuf, swapchain.ImageView(), extent);
+            // GPU breadcrumbs：登记 overlay pass（present_scheduler 非线程化，闭包立即执行）。
+            present_scheduler.RecordCrumb({.kind = Breadcrumbs::Kind::Pass, .name = "overlay"},
+                                          [&](vk::CommandBuffer rec_cmdbuf) {
+                                              Gow3Overlay::Render(rec_cmdbuf,
+                                                                  swapchain.ImageView(), extent);
+                                          });
             const auto [release_src, release_dst] = swapchain.ReleaseQueues();
             const vk::ImageMemoryBarrier to_present{
                 .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
@@ -1338,8 +1385,7 @@ bool Presenter::PresentWithLsfg(Frame* frame) {
         info.AddSignal(frame->present_done);
         scheduler.Flush(info);
         if (swapchain.NeedsSubmittedBeforePresent()) {
-            const auto waited = instance.GetDevice().waitForFences(frame->present_done, vk::True,
-                                                                   std::numeric_limits<u64>::max());
+            const auto waited = WaitPresentFence(instance.GetDevice(), frame->present_done);
             ASSERT_MSG(waited == vk::Result::eSuccess,
                        "Waiting before the AHB present export failed: {}", vk::to_string(waited));
         }
@@ -1380,7 +1426,7 @@ Frame* Presenter::GetRenderFrame() {
     vk::Result result{};
 
     const auto wait = [&]() {
-        result = device.waitForFences(frame->present_done, false, std::numeric_limits<u64>::max());
+        result = WaitPresentFence(device, frame->present_done);
         return result;
     };
 

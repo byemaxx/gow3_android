@@ -47,8 +47,8 @@ internal fun LanguageCard(onChangeLanguage: (String) -> Unit) {
     )
     var expanded by remember { mutableStateOf(false) }
     val selectedLabel = options.firstOrNull { it.second == current }
-        ?.let { context.getString(it.first) }
-        ?: context.getString(R.string.language_follow_system)
+        ?.let { stringResource(it.first) }
+        ?: stringResource(R.string.language_follow_system)
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -71,7 +71,7 @@ internal fun LanguageCard(onChangeLanguage: (String) -> Unit) {
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 options.forEach { (labelRes, value) ->
                     DropdownMenuItem(
-                        text = { Text(context.getString(labelRes)) },
+                        text = { Text(stringResource(labelRes)) },
                         onClick = {
                             expanded = false
                             onChangeLanguage(value)

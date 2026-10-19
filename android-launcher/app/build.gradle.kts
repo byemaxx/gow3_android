@@ -22,8 +22,8 @@ android {
         applicationId = "com.gow3.android.bionic"
         minSdk = 28
         targetSdk = 28
-        versionCode = 4
-        versionName = "2.1.7-bionic-v1-vibration-audio"
+        versionCode = 5
+        versionName = "2.1.7-bionic-v2-sync1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -49,6 +49,10 @@ android {
     ndkVersion = "29.0.14206865"
 
     buildTypes {
+        debug {
+            // debug 与 release 共存：包名加 .debug 后缀（RuntimeInstaller 校验时容忍该后缀）。
+            applicationIdSuffix = ".debug"
+        }
         release {
             optimization {
                 enable = false

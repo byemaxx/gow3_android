@@ -150,8 +150,11 @@ private:
     std::unique_ptr<Lsfg> lsfg;
     std::atomic<u32> frames_cap{0}; ///< 0 = 无上限（直通/引擎未启用）
     // HUD 遥测文件（state 路径 + ".stats"）：每秒一次原子写；off 时清零一次。
+    // lsfg_stats_active 标记本会话曾写过活数据；lsfg_stats_cleared 保证引擎不活跃时
+    // 每个会话只清一次（跨会话残留的 framegen.stats 也会在首次呈现周期被清除）。
     std::chrono::steady_clock::time_point lsfg_stats_ts{};
     bool lsfg_stats_active{false};
+    bool lsfg_stats_cleared{false};
     void WriteLsfgStats();
 #endif
     Swapchain swapchain;

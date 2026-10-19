@@ -64,11 +64,16 @@ final class RuntimeInstaller {
     /** @param applicationId the running app's id, so a payload built for another one is refused
      *  instead of silently writing into filesDir paths the payload's manifest disagrees with. */
     static void validateRuntime(File root, String applicationId) throws Exception {
+        // debug 变体的包名带 ".debug" 后缀（build.gradle.kts applicationIdSuffix），payload
+        // 仍按基础 id（com.gow3.android.bionic）发布且同源同 sha256，因此比较前剥掉后缀。
+        String manifestId = applicationId.endsWith(".debug")
+                ? applicationId.substring(0, applicationId.length() - ".debug".length())
+                : applicationId;
         File manifest = path(root, "runtime-manifest.json");
         if (!manifest.isFile()) throw new IllegalStateException("Runtime archive is incomplete: manifest");
         String text = new String(Files.readAllBytes(manifest.toPath()), StandardCharsets.UTF_8);
         if (!text.contains("\"schema_version\": 1") ||
-                !text.contains("\"application_id\": \"" + applicationId + "\"") ||
+                !text.contains("\"application_id\": \"" + manifestId + "\"") ||
                 !text.contains("\"java_package\": \"com.gow3.android.game\""))
             throw new IllegalStateException("Runtime archive is incompatible: manifest identity");
         if (!path(root, "gow3port/bionic/bin/gow3-probe").isFile()) {

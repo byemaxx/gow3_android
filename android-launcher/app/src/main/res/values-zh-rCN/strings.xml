@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Gow3Launcher</string>
+    <string name="app_name">God of War III</string>
 
     <!-- 品牌与关键动作按钮：双语同值，不翻译 -->
     <string name="title_god_of_war_iii">GOD OF WAR III</string>
@@ -42,21 +42,21 @@
     <string name="param_frames_queued">排队帧数</string>
     <string name="param_sharpen">锐化</string>
     <string name="param_sharpness">锐化强度</string>
-    <string name="param_display_stretch">画面拉伸全屏</string>
+    <string name="param_display_stretch">画面铺满</string>
 
     <!-- 启动参数：选项名 -->
     <string name="param_option_off_720p">关闭（以 1280×720 渲染）</string>
+    <string name="param_option_gsr2">骁龙 GSR 2</string>
     <string name="param_option_fsr31">FSR 3.1</string>
     <string name="param_option_native">原生</string>
-    <string name="param_option_480p">480p</string>
-    <string name="param_option_540p">540p</string>
-    <string name="param_option_720p">720p</string>
-    <string name="param_option_800p">800p</string>
-    <string name="param_option_900p">900p</string>
-    <string name="param_option_1080p">1080p</string>
-    <string name="param_option_1440p">1440p</string>
-    <string name="param_option_1800p">1800p</string>
-    <string name="param_option_4k">4K</string>
+    <string name="param_option_480p">854×480</string>
+    <string name="param_option_540p">960×540</string>
+    <string name="param_option_720p">1280×720</string>
+    <string name="param_option_900p">1600×900</string>
+    <string name="param_option_1080p">1920×1080</string>
+    <string name="param_option_1440p">2560×1440</string>
+    <string name="param_option_1800p">3200×1800</string>
+    <string name="param_option_4k">3840×2160</string>
     <string name="param_option_game_default">游戏默认</string>
     <string name="param_option_30">30</string>
     <string name="param_option_60">60</string>
@@ -66,13 +66,17 @@
     <string name="param_option_engine_60">60（游戏原生）</string>
     <string name="param_option_on">开</string>
     <string name="param_option_off">关</string>
+    <string name="param_option_display_fit">适配（留黑边）</string>
+    <string name="param_option_display_stretch">拉伸铺满（变形）</string>
+    <string name="param_option_display_crop">裁切铺满</string>
     <string name="param_option_frames_1">1（最低延迟）</string>
     <string name="param_option_frames_2">2</string>
 
     <!-- 启动参数：说明 -->
-    <string name="param_desc_upscaler">使用 FSR 3.1 重建画面。游戏分辨率由「分辨率」选项单独控制；关闭 FSR 不会关闭分辨率补丁。</string>
-    <string name="param_desc_render_patch">通过补丁调整游戏分辨率。可选档位随当前游戏及版本变化，与补丁页同步。「原生」表示关闭分辨率补丁。下次启动生效。</string>
+    <string name="param_desc_upscaler">用所选的时间域超分算法重建画面（默认为骁龙 GSR 2，为 Adreno GPU 设计；保留 FSR 3.1 可选）。游戏分辨率由「分辨率」选项单独控制；关闭超分不会关闭分辨率补丁。</string>
+    <string name="param_desc_render_patch">通过补丁调整游戏分辨率，档位按实际像素尺寸显示。可选档位随当前游戏及版本变化，与补丁页同步。「原生」表示关闭分辨率补丁。下次启动生效。</string>
     <string name="param_desc_engine_fps">60 是游戏原生引擎帧率。更高档位需要对应的游戏补丁，仅在当前版本有补丁时显示。与补丁页同步，下次启动生效。</string>
+    <string name="param_desc_fps_limit">最大帧率受设置/性能/引擎帧率限制</string>
     <string name="home_patch_identity">补丁选项：%1$s · %2$s · 更多开关在补丁页</string>
     <string name="home_patch_unavailable">未匹配到补丁目录。请检查游戏与升级目录后再调整分辨率和引擎帧率，具体原因可在补丁页查看。</string>
     <string name="home_patch_unavailable_value">%1$s（当前版本不可用）</string>
@@ -132,10 +136,10 @@
     <string name="param_desc_vsync">将游戏帧与屏幕刷新率同步，避免画面撕裂。除非出现撕裂或卡顿，否则保持开启。</string>
     <string name="param_desc_frames_queued">游戏在屏幕上显示之前预先准备多少帧。数值越低越能降低输入延迟；数值越高在较弱的硬件上可能更流畅。</string>
     <string name="param_desc_anisotropy">让斜视角下的地板与墙面纹理更清晰。数值越高可能多占用一点 GPU 带宽。下次启动生效。</string>
-    <string name="param_desc_vibration">按比例调节手柄振动强度，0% 表示关闭振动。游戏运行时立即生效。</string>
-    <string name="param_desc_sharpen">在 FSR 升采样之后追加 RCAS 锐化。升采样器为 OFF 时无效果。</string>
+    <string name="param_desc_vibration">调节支持振动的手柄强度；手柄振动不可用时使用手机振动。0% 关闭振动，强度控制取决于设备支持。</string>
+    <string name="param_desc_sharpen">锐化升采样后的画面（全部强度档位对所有超分算法生效）。超分为 OFF 时无效果。</string>
     <string name="param_desc_sharpness">锐化强度（0.00–2.00）。仅在锐化开启时生效。</string>
-    <string name="param_desc_display_stretch">把画面拉伸铺满整个屏幕（不保持宽高比，消除宽屏下的左右黑边，画面会变形）。下次启动生效。</string>
+    <string name="param_desc_display_stretch">画面铺满屏幕的方式：适配=保持宽高比居中（留黑边）；拉伸铺满=强制拉满整屏（画面会变形）；裁切铺满=保持宽高比放大到覆盖整屏、居中裁掉溢出（无黑边、无变形，边缘视野略有裁切）。下次启动生效。</string>
     <string name="param_skip_animations">跳过动画</string>
     <string name="param_desc_skip_animations">跳过开场 logo 与开场动画，并允许在游戏中按 X 跳过任意视频。与补丁页是同一组开关。</string>
 
@@ -144,6 +148,34 @@
     <string name="param_category_graphics">图形</string>
     <string name="param_category_performance">性能</string>
     <string name="param_category_controls">操作</string>
+
+    <!-- 按键映射卡片与页面（add-pad-button-mapping；PS 按钮名符号用 Unicode） -->
+    <string name="pad_mapping_title">按键映射</string>
+    <string name="pad_mapping_desc">自定义物理手柄按键到游戏按钮的绑定，下次进入游戏时生效。</string>
+    <string name="pad_mapping_custom">自定义</string>
+    <string name="pad_mapping_hint_idle">点选一个游戏按钮，再按下手柄按键或扳机完成绑定。点此可取消。</string>
+    <string name="pad_mapping_hint_capture">按下手柄按键或扳机…点此取消</string>
+    <string name="pad_mapping_restore">恢复默认</string>
+    <string name="pad_mapping_done">完成</string>
+    <string name="pad_mapping_restored">按键映射已恢复默认</string>
+    <string name="pad_mapping_default_fmt">默认：%1$s</string>
+    <string name="pad_mapping_unbound">未绑定</string>
+    <string name="pad_button_cross">✕ 叉</string>
+    <string name="pad_button_circle">○ 圈</string>
+    <string name="pad_button_square">□ 方块</string>
+    <string name="pad_button_triangle">△ 三角</string>
+    <string name="pad_button_l1">L1</string>
+    <string name="pad_button_r1">R1</string>
+    <string name="pad_button_l2">L2</string>
+    <string name="pad_button_r2">R2</string>
+    <string name="pad_button_l3">L3</string>
+    <string name="pad_button_r3">R3</string>
+    <string name="pad_button_options">OPTIONS</string>
+    <string name="pad_button_touchpad">触摸板</string>
+    <string name="pad_button_up">十字键 上</string>
+    <string name="pad_button_down">十字键 下</string>
+    <string name="pad_button_left">十字键 左</string>
+    <string name="pad_button_right">十字键 右</string>
     <string name="param_category_audio">音频</string>
     <string name="param_category_driver">驱动</string>
 

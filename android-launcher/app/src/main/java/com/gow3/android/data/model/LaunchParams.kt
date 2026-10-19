@@ -77,15 +77,9 @@ internal data class LaunchOption(val value: String, val labelRes: Int)
  */
 internal object LaunchParams {
     val all: List<LaunchParam> = listOf(
-        LaunchParam(
-            key = "upscaler", labelRes = R.string.param_upscaler, category = LaunchCategory.GRAPHICS,
-            options = listOf(
-                LaunchOption("off", R.string.param_option_off),
-                LaunchOption("fsr3", R.string.param_option_fsr31),
-            ),
-            defaultValue = "fsr3",
-            descriptionRes = R.string.param_desc_upscaler,
-        ),
+        // upscaler 行已移除（change replace-android-fsr3-with-gsr2 收尾）：时间域超分路径
+        // 在 Android 尚未接通，设置页不再提供该选项；ini 默认与一次性迁移均为 off，
+        // run-bionic.sh 硬性 upscaler=off 兜底。接通后把 LaunchParam 块加回即可。
         LaunchParam(
             key = "render_resolution", labelRes = R.string.param_resolution, category = LaunchCategory.GRAPHICS,
             options = listOf(
@@ -93,7 +87,6 @@ internal object LaunchParams {
                 LaunchOption("480p", R.string.param_option_480p),
                 LaunchOption("540p", R.string.param_option_540p),
                 LaunchOption("720p", R.string.param_option_720p),
-                LaunchOption("800p", R.string.param_option_800p),
                 LaunchOption("900p", R.string.param_option_900p),
                 LaunchOption("1080p", R.string.param_option_1080p),
                 LaunchOption("1440p", R.string.param_option_1440p),
@@ -145,12 +138,13 @@ internal object LaunchParams {
             descriptionRes = R.string.param_desc_sharpness,
         ),
         LaunchParam(
-            // 显示拉伸全屏：应用侧显示桥（GameActivity 启动 Gow3Present 时读取）消费；
-            // 关=保持宽高比居中适配（默认），开=把帧拉伸铺满 SurfaceView。
+            // 显示几何（应用侧显示桥 GameActivity 启动 Gow3Present 时读取）三档：
+            // 0=等比适配（留黑边，默认），1=拉伸铺满（不保持比例），2=裁切铺满（等比覆盖、裁掉溢出）。
             key = "display_stretch", labelRes = R.string.param_display_stretch, category = LaunchCategory.GRAPHICS,
             options = listOf(
-                LaunchOption("0", R.string.param_option_off),
-                LaunchOption("1", R.string.param_option_on),
+                LaunchOption("0", R.string.param_option_display_fit),
+                LaunchOption("1", R.string.param_option_display_stretch),
+                LaunchOption("2", R.string.param_option_display_crop),
             ),
             defaultValue = "0",
             descriptionRes = R.string.param_desc_display_stretch,
@@ -247,6 +241,23 @@ internal object LaunchParams {
     fun valueOf(ini: Map<String, String>, param: LaunchParam): String {
         val v = ini[param.key]?.trim()
         return if (v.isNullOrEmpty()) param.defaultValue else v
+    }
+
+    /** 引擎帧率默认值（移动端优化，与 fps_limit 档位约束共用）。 */
+    const val DEFAULT_ENGINE_FPS = 60
+
+    /**
+     * 按当前配置求生效档位（change preset-resolution-only-fps-independent）：
+     * `fps_limit`（帧率上限）的可用档位上限不超过当前 `engine_fps`（引擎帧率），
+     * `0`（不限）除外；engine_fps 键缺失或非法时按默认 60 处理。其余参数原样返回。
+     * 只约束可选项，不改变已保存的 `fps_limit` 值本身。
+     */
+    fun effectiveOptions(param: LaunchParam, values: Map<String, String>): List<LaunchOption> {
+        if (param.key != "fps_limit") return param.options
+        val cap = values["engine_fps"]?.toIntOrNull() ?: DEFAULT_ENGINE_FPS
+        return param.options.filter { option ->
+            option.value == "0" || (option.value.toIntOrNull() ?: 0) <= cap
+        }
     }
 
     /** 当前值对应的选项；未知值返回 null（由 UI 层回退到原始值）。 */

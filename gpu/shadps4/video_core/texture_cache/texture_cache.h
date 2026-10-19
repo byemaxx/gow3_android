@@ -74,11 +74,15 @@ public:
         ImageInfo info;
         ImageViewInfo view_info;
         BindingType type{BindingType::Texture};
+        /// gow3（上游 b646683）：着色器以整数坐标读取（ImageResource::needs_native），而非
+        /// 归一化采样。是 ResolveOverlap partial height views 的启用前提之一。
+        bool needs_native{true};
 
         ImageDesc() = default;
         ImageDesc(const AmdGpu::Image& image, const Shader::ImageResource& desc)
             : info{image, desc}, view_info{image, desc},
-              type{desc.is_written ? BindingType::Storage : BindingType::Texture} {}
+              type{desc.is_written ? BindingType::Storage : BindingType::Texture},
+              needs_native{desc.needs_native} {}
         ImageDesc(const AmdGpu::ColorBuffer& buffer, AmdGpu::CbDbExtent hint)
             : info{buffer, hint}, view_info{buffer}, type{BindingType::RenderTarget} {}
         ImageDesc(const AmdGpu::DepthBuffer& buffer, AmdGpu::DepthView view,
@@ -207,7 +211,8 @@ public:
     [[nodiscard]] std::tuple<ImageId, int, int> ResolveOverlap(const ImageInfo& info,
                                                                BindingType binding,
                                                                ImageId cache_img_id,
-                                                               ImageId merged_image_id);
+                                                               ImageId merged_image_id,
+                                                               bool native_reads);
 
     /// Resolves depth overlap and either re-creates the image or returns existing one
     [[nodiscard]] ImageId ResolveDepthOverlap(const ImageInfo& requested_info, BindingType binding,
@@ -470,6 +475,13 @@ private:
     };
     std::array<ReadbackImageStat, 16> readback_images{};
     u64 readbacks_released = 0;
+    /// gow3（上游 b646683，轻量版）：PartialHeightViews 复用命中计数与 5 秒节流的日志，
+    /// 仅在 GOW3_PERF_DIAG=1 时打印（不含上游的 CreateStat 诊断面板）。
+    u64 partial_views = 0;
+    std::chrono::steady_clock::time_point partial_view_report = std::chrono::steady_clock::now();
+    /// 调用方持有 `mutex`（ResolveOverlap 在 FindImage 的锁内）。
+    void NotePartialView() { ++partial_views; }
+    void ReportPartialViews();
     ReadbackQueue<Vulkan::StagingBufferRef> pending_readbacks;
     std::mutex readback_mutex;
     std::atomic<bool> has_pending_readbacks{false};
@@ -520,6 +532,9 @@ private:
         AmdGpu::ImageType type{};
         bool exact_fmt = false;
         BindingType binding{};
+        /// gow3（上游 b646683）：needs_native 参与结果区分，同一镜像的采样与 load 绑定
+        /// 不得共享 memo。
+        bool needs_native = true;
         u32 levels = 0;
         u32 layers = 0;
         u64 generation = ~0ULL;

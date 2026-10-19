@@ -22,10 +22,25 @@
             <Line Type="bytes" Address="0x5643f0" Value="56030000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
             <Line Type="bytes" Address="0x5ff889" Value="56030000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
             <Line Type="bytes" Address="0x5ff88f" Value="e0010000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
+            <Line Type="bytes" Address="0x7f2a3c" Value="ab010000" Pattern="00 00 00 00 0a e0 f2 00 c0 03 00 00 1c 02 00 00 01 00 00 00" At="8" />
+            <Line Type="bytes" Address="0x7f2a40" Value="f0000000" Pattern="0a e0 f2 00 c0 03 00 00 1c 02 00 00 01 00 00 00 00 00 00 00" At="8" />
             <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
         </PatchList>
     </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 720p" Note="Decreases game output resolution to 1280x720 and increases Video Arena to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 540p" Note="Experimental 540p internal render target hierarchy and output resolution for base PS4 mode, v01.02. Adapted from kvicken's resolution patches in shadps4-emu/ps4_cheats PR #145. Do not combine with another resolution patch. Performance depends on hardware; this does not change the frame cap. Normalized name: Resolution Patch (960x540). Includes Video Arena adjustment to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only one resolution patch may be enabled. Android runtime effect pending validation." Author="kvicken, Bachata-S4" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+        <PatchList>
+            <Line Type="bytes" Address="0x5f0c5b" Value="c0030000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
+            <Line Type="bytes" Address="0x5f0c63" Value="1c020000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
+            <Line Type="bytes" Address="0x5f0c6c" Value="c003" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="13" />
+            <Line Type="bytes" Address="0x5f0c73" Value="1c02" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="20" />
+            <Line Type="bytes" Address="0x5643e3" Value="1c020000" Pattern="c7 04 24 38 04 00 00 48 8d 3d ?? ?? ?? ?? 41 b9 80 07 00 00" At="3" />
+            <Line Type="bytes" Address="0x5643f0" Value="c0030000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
+            <Line Type="bytes" Address="0x5ff889" Value="c0030000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
+            <Line Type="bytes" Address="0x5ff88f" Value="1c020000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
+            <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
+        </PatchList>
+    </Metadata>
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 720p" Note="Decreases game output resolution to 1280x720 and increases Video Arena to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
         <PatchList>
             <Line Type="bytes" Address="0x5f0c5b" Value="00050000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
             <Line Type="bytes" Address="0x5f0c63" Value="d0020000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
@@ -35,10 +50,40 @@
             <Line Type="bytes" Address="0x5643f0" Value="00050000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
             <Line Type="bytes" Address="0x5ff889" Value="00050000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
             <Line Type="bytes" Address="0x5ff88f" Value="d0020000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
+            <Line Type="bytes" Address="0x7f2a3c" Value="80020000" Pattern="00 00 00 00 0a e0 f2 00 c0 03 00 00 1c 02 00 00 01 00 00 00" At="8" />
+            <Line Type="bytes" Address="0x7f2a40" Value="68010000" Pattern="0a e0 f2 00 c0 03 00 00 1c 02 00 00 01 00 00 00 00 00 00 00" At="8" />
             <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
         </PatchList>
     </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 1440p" Note="Increases game output resolution to 2560x1440 and Video Arena to 2.75 GiB. Requires setting DMEM to 3072 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 900p" Note="Experimental, untested 900p variant for v01.02 base PS4 mode. Uses kvicken's public community resolution-patch address layout. Enable only ONE resolution patch, including the existing 540p/720p options. Does not change the frame cap. Normalized name: Resolution Patch (1600x900). Includes Video Arena adjustment to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only one resolution patch may be enabled. Android runtime effect pending validation." Author="kvicken" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+        <PatchList>
+            <Line Type="bytes" Address="0x5f0c5b" Value="40060000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
+            <Line Type="bytes" Address="0x5f0c63" Value="84030000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
+            <Line Type="bytes" Address="0x5f0c6c" Value="4006" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="13" />
+            <Line Type="bytes" Address="0x5f0c73" Value="8403" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="20" />
+            <Line Type="bytes" Address="0x5643e3" Value="84030000" Pattern="c7 04 24 38 04 00 00 48 8d 3d ?? ?? ?? ?? 41 b9 80 07 00 00" At="3" />
+            <Line Type="bytes" Address="0x5643f0" Value="40060000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
+            <Line Type="bytes" Address="0x5ff889" Value="40060000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
+            <Line Type="bytes" Address="0x5ff88f" Value="84030000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
+            <Line Type="bytes" Address="0x7f2a3c" Value="20030000" Pattern="00 00 00 00 0a e0 f2 00 c0 03 00 00 1c 02 00 00 01 00 00 00" At="8" />
+            <Line Type="bytes" Address="0x7f2a40" Value="c2010000" Pattern="0a e0 f2 00 c0 03 00 00 1c 02 00 00 01 00 00 00 00 00 00 00" At="8" />
+            <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
+        </PatchList>
+    </Metadata>
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 1080p" Note="Experimental, untested 1080p variant for v01.02 base PS4 mode. Uses kvicken's public community resolution-patch address layout. Enable only ONE resolution patch, including the existing 540p/720p options. Does not change the frame cap. Normalized name: Resolution Patch (1920x1080). Includes Video Arena adjustment to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only one resolution patch may be enabled. Android runtime effect pending validation. Output dimensions equal native 1080p; this option also expands Video Arena." Author="kvicken" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+        <PatchList>
+            <Line Type="bytes" Address="0x5f0c5b" Value="80070000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
+            <Line Type="bytes" Address="0x5f0c63" Value="38040000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
+            <Line Type="bytes" Address="0x5f0c6c" Value="8007" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="13" />
+            <Line Type="bytes" Address="0x5f0c73" Value="3804" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="20" />
+            <Line Type="bytes" Address="0x5643e3" Value="38040000" Pattern="c7 04 24 38 04 00 00 48 8d 3d ?? ?? ?? ?? 41 b9 80 07 00 00" At="3" />
+            <Line Type="bytes" Address="0x5643f0" Value="80070000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
+            <Line Type="bytes" Address="0x5ff889" Value="80070000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
+            <Line Type="bytes" Address="0x5ff88f" Value="38040000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
+            <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
+        </PatchList>
+    </Metadata>
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 1440p" Note="Increases game output resolution to 2560x1440 and Video Arena to 2.75 GiB. Requires setting DMEM to 3072 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
         <PatchList>
             <Line Type="bytes" Address="0x5f0c5b" Value="000a0000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
             <Line Type="bytes" Address="0x5f0c63" Value="a0050000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
@@ -57,7 +102,7 @@
             <Line Type="bytes" Address="0x7cd918" Value="000000b0" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
         </PatchList>
     </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 1800p" Note="Increases game output resolution to 3200x1800 and Video Arena to 3.25 GiB. Requires setting DMEM to 4608 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 1800p" Note="Increases game output resolution to 3200x1800 and Video Arena to 3.25 GiB. Requires setting DMEM to 4608 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
         <PatchList>
             <Line Type="bytes" Address="0x5f0c5b" Value="800c0000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
             <Line Type="bytes" Address="0x5f0c63" Value="08070000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
@@ -76,7 +121,7 @@
             <Line Type="bytes" Address="0x7cd918" Value="000000d0" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
         </PatchList>
     </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 4K" Note="Increases game output resolution to 3840x2160 and Video Arena to approximately 4 GB (3.75 GiB). Requires setting DMEM to 6144 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+<Metadata Title="God of War III Remastered" Name="Resolution Patch - 4K" Note="Increases game output resolution to 3840x2160 and Video Arena to approximately 4 GB (3.75 GiB). Requires setting DMEM to 6144 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
         <PatchList>
             <Line Type="bytes" Address="0x5f0c5b" Value="000f0000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
             <Line Type="bytes" Address="0x5f0c63" Value="70080000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
@@ -95,7 +140,7 @@
             <Line Type="bytes" Address="0x7cd918" Value="000000f0" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
         </PatchList>
     </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Frame Rate Patch - 120 FPS" Note="Raises the engine maximum framerate from 59.94 to 120 FPS so the frametime clamp produces a 1/120 second gameplay delta. Corrects swing energy calculations to match the original 60 Hz simulation. Requires setting VBlank to 120 FPS." Author="kvicken" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
+                    <Metadata Title="God of War III Remastered" Name="Frame Rate Patch - 120 FPS" Note="Raises the engine maximum framerate from 59.94 to 120 FPS so the frametime clamp produces a 1/120 second gameplay delta. Corrects swing energy calculations to match the original 60 Hz simulation. Requires setting VBlank to 120 FPS." Author="kvicken" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
         <PatchList>
             <Line Type="bytes" Address="0x48ff0a" Value="488d05{rel:sixty:0}" Pattern="c5 fa 11 85 98 fb ff ff 48 8d 05 ?? ?? ?? ?? c5 fa 10 00" At="8" />
             <Line Type="bytes" Address="0x75dd04" Value="0000f042" Pattern="00 00 80 3f 00 00 48 42 8f c2 6f 42 00 00 c8 42 00 00 00 5f" At="8" />
@@ -168,43 +213,4 @@
             <Line Type="bytes" Address="0x5b739b" Value="eb32" Pattern="48 89 45 d8 83 bb 80 01 00 00 00 74 32 4c 8d 7d a8 48 89 f7 4c 89 fe" At="11" />
         </PatchList>
     </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 900p" Note="Experimental, untested 900p variant for v01.02 base PS4 mode. Uses kvicken's public community resolution-patch address layout. Enable only ONE resolution patch, including the existing 540p/720p options. Does not change the frame cap. Normalized name: Resolution Patch (1600x900). Includes Video Arena adjustment to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only one resolution patch may be enabled. Android runtime effect pending validation." Author="kvicken" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
-        <PatchList>
-            <Line Type="bytes" Address="0x5f0c5b" Value="40060000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
-            <Line Type="bytes" Address="0x5f0c63" Value="84030000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
-            <Line Type="bytes" Address="0x5f0c6c" Value="4006" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="13" />
-            <Line Type="bytes" Address="0x5f0c73" Value="8403" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="20" />
-            <Line Type="bytes" Address="0x5643e3" Value="84030000" Pattern="c7 04 24 38 04 00 00 48 8d 3d ?? ?? ?? ?? 41 b9 80 07 00 00" At="3" />
-            <Line Type="bytes" Address="0x5643f0" Value="40060000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
-            <Line Type="bytes" Address="0x5ff889" Value="40060000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
-            <Line Type="bytes" Address="0x5ff88f" Value="84030000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
-            <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
-        </PatchList>
-    </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 1080p" Note="Experimental, untested 1080p variant for v01.02 base PS4 mode. Uses kvicken's public community resolution-patch address layout. Enable only ONE resolution patch, including the existing 540p/720p options. Does not change the frame cap. Normalized name: Resolution Patch (1920x1080). Includes Video Arena adjustment to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only one resolution patch may be enabled. Android runtime effect pending validation. Output dimensions equal native 1080p; this option also expands Video Arena." Author="kvicken" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
-        <PatchList>
-            <Line Type="bytes" Address="0x5f0c5b" Value="80070000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
-            <Line Type="bytes" Address="0x5f0c63" Value="38040000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
-            <Line Type="bytes" Address="0x5f0c6c" Value="8007" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="13" />
-            <Line Type="bytes" Address="0x5f0c73" Value="3804" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="20" />
-            <Line Type="bytes" Address="0x5643e3" Value="38040000" Pattern="c7 04 24 38 04 00 00 48 8d 3d ?? ?? ?? ?? 41 b9 80 07 00 00" At="3" />
-            <Line Type="bytes" Address="0x5643f0" Value="80070000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
-            <Line Type="bytes" Address="0x5ff889" Value="80070000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
-            <Line Type="bytes" Address="0x5ff88f" Value="38040000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
-            <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
-        </PatchList>
-    </Metadata>
-    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 540p" Note="Experimental 540p internal render target hierarchy and output resolution for base PS4 mode, v01.02. Adapted from kvicken's resolution patches in shadps4-emu/ps4_cheats PR #145. Do not combine with another resolution patch. Performance depends on hardware; this does not change the frame cap. Normalized name: Resolution Patch (960x540). Includes Video Arena adjustment to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only one resolution patch may be enabled. Android runtime effect pending validation." Author="kvicken, Bachata-S4" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false" Validation="offline-matched">
-        <PatchList>
-            <Line Type="bytes" Address="0x5f0c5b" Value="c0030000" Pattern="48 8d 75 a0 89 c7 e8 ?? ?? ?? ?? 41 c7 45 0c 80 07 00 00" At="15" />
-            <Line Type="bytes" Address="0x5f0c63" Value="1c020000" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="4" />
-            <Line Type="bytes" Address="0x5f0c6c" Value="c003" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="13" />
-            <Line Type="bytes" Address="0x5f0c73" Value="1c02" Pattern="41 c7 45 10 38 04 00 00 66 41 c7 45 14 80 07 66 41 c7 45 16 38 04" At="20" />
-            <Line Type="bytes" Address="0x5643e3" Value="1c020000" Pattern="c7 04 24 38 04 00 00 48 8d 3d ?? ?? ?? ?? 41 b9 80 07 00 00" At="3" />
-            <Line Type="bytes" Address="0x5643f0" Value="c0030000" Pattern="41 b9 80 07 00 00 4c 89 f9 4d 89 e0 e8 ?? ?? ?? ??" At="2" />
-            <Line Type="bytes" Address="0x5ff889" Value="c0030000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="6" />
-            <Line Type="bytes" Address="0x5ff88f" Value="1c020000" Pattern="bf 00 01 00 00 b9 80 07 00 00 41 b8 38 04 00 00" At="12" />
-            <Line Type="bytes" Address="0x7cd918" Value="00000090" Pattern="00 00 00 43 00 00 80 3f 00 00 00 50 00 00 00 00 00 04 00 00" At="8" />
-        </PatchList>
-    </Metadata>
-</Patch>
+            </Patch>

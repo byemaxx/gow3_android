@@ -2,10 +2,12 @@
  * gow3_present_proto.h). Listens on a unix socket, receives AHardwareBuffers and frames from the
  * game process and shows them with an ASurfaceControl child of the SurfaceView, scaled to fit.
  *
- * 显示几何（display_stretch）：nativeStart 传入 stretch 时，帧不保持宽高比、拉伸铺满整个
- * SurfaceView（gow3.ini display_stretch=1，应用进程内配置，不经 present 协议传递）；
- * 默认仍是保持宽高比居中适配。两种模式每帧在 show_frame() 里选择，socket 消息、fence、
- * 反压行为完全不变。
+ * 显示几何（display_stretch）：nativeStart 传入三档模式，每帧在 show_frame() 里选择；
+ * socket 消息、fence、反压行为完全不变（gow3.ini display_stretch，应用进程内配置，
+ * 不经 present 协议传递）：
+ *   0 = 保持宽高比居中适配（默认，非满屏侧留黑边）
+ *   1 = 拉伸铺满：不保持宽高比、整帧拉满 SurfaceView
+ *   2 = 裁切铺满：等比放大到覆盖窗口、源矩形居中裁掉溢出（无黑边、无变形，边缘视野被裁）
  *
  * minSdk is 28: ASurfaceControl / ASurfaceTransaction (API 29) are resolved with dlsym; without
  * them frames are dropped (released at once) and start() says so. All state is behind one mutex.
@@ -134,7 +136,7 @@ static struct {
     ANativeWindow* window;
     ASurfaceControl* sc;
     int last_set; /* buffer index of the newest transaction, -1 none */
-    int stretch; /* nativeStart 传入的显示几何：1=拉伸铺满窗口（不保持宽高比），0=保持宽高比居中适配 */
+    int stretch; /* nativeStart 传入的显示几何模式：0=等比居中适配（黑边），1=拉伸铺满（变形），2=裁切铺满（等比覆盖、源居中裁切） */
     /* FIFO mode (the connection's HELLO flags): frames wait in queue[] while a transaction is
      * outstanding. inflight is the id (txn_seq) of the newest transaction not yet completed, 0 none;
      * on_complete of an older one (after a surface loss, say) does not clear it. */
@@ -277,17 +279,34 @@ static void show_frame(uint32_t generation, uint32_t index, uint64_t frame, uint
              generation, index, acquire_fd);
     int w = ANativeWindow_getWidth(S.window), h = ANativeWindow_getHeight(S.window);
     if (w <= 0 || h <= 0) { w = (int)width; h = (int)height; }
-    ARect dst;
-    if (S.stretch) {
+    ARect dst, src;
+    if (S.stretch == 1) {
         /* 拉伸铺满：整帧缩放到整个窗口，不保持宽高比、不裁剪不偏移（display_stretch=1）。 */
+        src = (ARect){0, 0, (int32_t)width, (int32_t)height};
+        dst = (ARect){0, 0, w, h};
+    } else if (S.stretch == 2) {
+        /* 裁切铺满（display_stretch=2）：等比放大到覆盖整个窗口，溢出部分用源矩形居中裁掉。
+         * 几何上等价于"按覆盖比例缩放 + dst 越界"，但 dst 恒在窗口内，交由合成器裁切。 */
+        int64_t scale_w = (int64_t)w * height, scale_h = (int64_t)h * width; /* w*bh vs h*bw */
+        if (scale_w >= scale_h) {
+            /* 帧相对更宽：宽度方向贴合窗口，上下溢出被裁（可见高 = h*bw/w）。 */
+            int64_t visible_h = (int64_t)h * width / (w ? w : 1);
+            int32_t crop = (int32_t)((height - visible_h) / 2);
+            src = (ARect){0, crop, (int32_t)width, (int32_t)(height - crop)};
+        } else {
+            /* 帧相对更高：高度方向贴合窗口，左右溢出被裁（可见宽 = w*bh/h）。 */
+            int64_t visible_w = (int64_t)w * height / (h ? h : 1);
+            int32_t crop = (int32_t)((width - visible_w) / 2);
+            src = (ARect){crop, 0, (int32_t)(width - crop), (int32_t)height};
+        }
         dst = (ARect){0, 0, w, h};
     } else {
         /* Fit the buffer into the window keeping its aspect. */
+        src = (ARect){0, 0, (int32_t)width, (int32_t)height};
         int dw = w, dh = (int)((int64_t)w * height / (width ? width : 1));
         if (dh > h) { dh = h; dw = (int)((int64_t)h * width / (height ? height : 1)); }
         dst = (ARect){(w - dw) / 2, (h - dh) / 2, (w - dw) / 2 + dw, (h - dh) / 2 + dh};
     }
-    ARect src = {0, 0, (int32_t)width, (int32_t)height};
     DoneCtx* ctx = malloc(sizeof *ctx);
     if (!ctx) { send_release(generation, index, frame, acquire_fd); return; }
     ctx->session = S.session;
@@ -540,13 +559,14 @@ static void* server_thread(void* unused) {
 /* ---- JNI ---- */
 
 JNIEXPORT jstring JNICALL Java_com_gow3_android_game_Gow3Present_nativeStart(JNIEnv* env, jclass cls,
-        jstring jpath, jboolean jstretch) {
+        jstring jpath, jint jmode) {
     (void)cls;
     const char* path = (*env)->GetStringUTFChars(env, jpath, NULL);
     char msg[160];
     pthread_mutex_lock(&S.lock);
-    /* 显示几何每次 start 都按 gow3.ini 当前值刷新；只在本锁下写、帧线程只读。 */
-    S.stretch = jstretch ? 1 : 0;
+    /* 显示几何每次 start 都按 gow3.ini 当前值刷新；只在本锁下写、帧线程只读。
+     * 越界 mode 一律回落等比适配，与配置页缺省语义一致。 */
+    S.stretch = (jmode >= 0 && jmode <= 2) ? (int)jmode : 0;
     if (!S.started) {
         load_api();
         if (S.wake_fd < 0) /* kept for the life of the process: the receive thread may still poll it */

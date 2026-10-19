@@ -14,7 +14,7 @@ class SettingsEntryTest {
 
     @Test fun `graphics entries are card slots first then params in declared order`() {
         val entries = settingsEntries(LaunchCategory.GRAPHICS, params)
-        assertEquals(listOf("upscaler", "render_resolution", "anisotropy", "sharpen", "sharpness", "display_stretch"),
+        assertEquals(listOf("render_resolution", "anisotropy", "sharpen", "sharpness", "display_stretch"),
             entries.map { (it as SettingsEntry.Param).param.key })
         assertTrue(entries.all { it is SettingsEntry.Param })
     }

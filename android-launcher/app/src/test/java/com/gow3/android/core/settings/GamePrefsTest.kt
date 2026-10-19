@@ -69,4 +69,36 @@ class GamePrefsTest {
         GamePrefs(store).setPerfHudPosition(1f, 2f)
         assertTrue(store.contains(GamePrefs.KEY_PERF_HUD_X) && store.contains(GamePrefs.KEY_PERF_HUD_Y))
     }
+
+    // ---- 物理手柄按键映射（add-pad-button-mapping task 1.1） ----
+
+    @Test fun `pad mapping defaults to empty and roundtrips`() {
+        val p = prefs()
+        assertTrue("未设置时为空表 = 全默认", p.padMapping().isEmpty())
+        val mapping = mapOf("scan:304" to "triangle", "key:99" to "circle", "axis:23:+" to "l2")
+        p.setPadMapping(mapping)
+        assertEquals(mapping, p.padMapping())
+        // 持久化确实落盘（新 FakePrefs 重读）
+        val store = FakePrefs()
+        GamePrefs(store).setPadMapping(mapping)
+        assertEquals(mapping, GamePrefs(store).padMapping())
+    }
+
+    @Test fun `pad mapping empty map clears the key`() {
+        val p = prefs()
+        p.setPadMapping(mapOf("scan:304" to "triangle"))
+        p.setPadMapping(emptyMap())
+        assertFalse("空表应清键回落全默认", p.raw.contains(GamePrefs.KEY_PAD_MAPPING))
+        assertTrue(p.padMapping().isEmpty())
+    }
+
+    @Test fun `pad mapping corrupt json falls back to empty`() {
+        val store = FakePrefs()
+        store.edit().putString(GamePrefs.KEY_PAD_MAPPING, "{\"version\":1,\"map\":{broken").commit()
+        assertTrue(GamePrefs(store).padMapping().isEmpty())
+        store.edit().putString(GamePrefs.KEY_PAD_MAPPING, "not json at all").commit()
+        assertTrue(GamePrefs(store).padMapping().isEmpty())
+        store.edit().putString(GamePrefs.KEY_PAD_MAPPING, "{\"version\":1,\"map\":{\"scan:304\":42}}").commit()
+        assertTrue("非字符串值拒绝", GamePrefs(store).padMapping().isEmpty())
+    }
 }

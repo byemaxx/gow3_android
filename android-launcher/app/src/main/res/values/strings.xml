@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Gow3Launcher</string>
+    <!-- 桌面名称（Manifest android:label）。debug 变体经 src/debug 资源覆盖加 Debug 标识。 -->
+    <string name="app_name">God of War III</string>
 
     <!-- 品牌与关键动作按钮：双语同值，不翻译 -->
     <string name="title_god_of_war_iii">GOD OF WAR III</string>
@@ -42,21 +43,21 @@
     <string name="param_frames_queued">Frames queued</string>
     <string name="param_sharpen">Sharpening</string>
     <string name="param_sharpness">Sharpening strength</string>
-    <string name="param_display_stretch">Stretch to fullscreen</string>
+    <string name="param_display_stretch">Fullscreen picture fit</string>
 
     <!-- 启动参数：选项名 -->
     <string name="param_option_off_720p">Off (render at 1280×720)</string>
+    <string name="param_option_gsr2">Snapdragon GSR 2</string>
     <string name="param_option_fsr31">FSR 3.1</string>
     <string name="param_option_native">Native</string>
-    <string name="param_option_480p">480p</string>
-    <string name="param_option_540p">540p</string>
-    <string name="param_option_720p">720p</string>
-    <string name="param_option_800p">800p</string>
-    <string name="param_option_900p">900p</string>
-    <string name="param_option_1080p">1080p</string>
-    <string name="param_option_1440p">1440p</string>
-    <string name="param_option_1800p">1800p</string>
-    <string name="param_option_4k">4K</string>
+    <string name="param_option_480p">854×480</string>
+    <string name="param_option_540p">960×540</string>
+    <string name="param_option_720p">1280×720</string>
+    <string name="param_option_900p">1600×900</string>
+    <string name="param_option_1080p">1920×1080</string>
+    <string name="param_option_1440p">2560×1440</string>
+    <string name="param_option_1800p">3200×1800</string>
+    <string name="param_option_4k">3840×2160</string>
     <string name="param_option_game_default">Game default</string>
     <string name="param_option_2x">2x</string>
     <string name="param_option_4x">4x</string>
@@ -74,6 +75,9 @@
     <string name="param_option_engine_60">60 (the game\'s own)</string>
     <string name="param_option_on">ON</string>
     <string name="param_option_off">OFF</string>
+    <string name="param_option_display_fit">Fit (black bars)</string>
+    <string name="param_option_display_stretch">Stretch (distorts)</string>
+    <string name="param_option_display_crop">Crop to fill</string>
     <string name="param_option_frames_1">1 (lowest latency)</string>
     <string name="param_option_frames_2">2</string>
     <!-- RCAS 锐化强度离散档位（数值标签，双语同值不翻译） -->
@@ -86,9 +90,10 @@
     <string name="param_option_sharpness_200">2.00</string>
 
     <!-- 启动参数：说明 -->
-    <string name="param_desc_upscaler">Uses FSR 3.1 to reconstruct the image. The game resolution is controlled separately by the resolution setting; turning FSR off does not disable the resolution patch.</string>
-    <string name="param_desc_render_patch">Changes the game resolution through a patch. Available options follow the selected game and version and stay in sync with Patches. Native disables the resolution patch. Takes effect on the next launch.</string>
+    <string name="param_desc_upscaler">Reconstructs the image with the selected temporal upscaler (Snapdragon GSR 2 by default, designed for Adreno GPUs; FSR 3.1 kept as an option). The game resolution is controlled separately by the resolution setting; turning the upscaler off does not disable the resolution patch.</string>
+    <string name="param_desc_render_patch">Changes the game resolution through a patch; tiers are shown by their actual pixel size. Available options follow the selected game and version and stay in sync with Patches. Native disables the resolution patch. Takes effect on the next launch.</string>
     <string name="param_desc_engine_fps">60 is the game\'s original engine frame rate. Higher values require a matching game patch and only appear when available. This setting stays in sync with Patches and takes effect on the next launch.</string>
+    <string name="param_desc_fps_limit">The maximum frame rate is limited by this setting, device performance, and the engine frame rate.</string>
     <string name="home_patch_identity">Patch options for %1$s · %2$s · More switches in Patches</string>
     <string name="home_patch_unavailable">No matching patch catalog. Check the game and update folders to enable resolution and engine frame rate settings. See Patches for details.</string>
     <string name="home_patch_unavailable_value">%1$s (unavailable for this version)</string>
@@ -149,9 +154,9 @@
     <string name="param_desc_frames_queued">How many frames the game prepares ahead of what the screen shows. Lower numbers cut input lag; higher numbers can improve smoothness on weaker hardware.</string>
     <string name="param_desc_anisotropy">Sharpens floors and walls viewed at an angle. Higher values may use a little more GPU bandwidth. Takes effect on the next launch.</string>
     <string name="param_desc_vibration">Scales vibration on supported gamepads, or on the phone when gamepad vibration is unavailable. 0% disables vibration. Strength control depends on device support.</string>
-    <string name="param_desc_sharpen">Applies an RCAS sharpening pass after FSR upscaling. Has no effect while the upscaler is OFF.</string>
+    <string name="param_desc_sharpen">Sharpens the upscaled image (the full strength range applies to every upscaler). Has no effect while the upscaler is OFF.</string>
     <string name="param_desc_sharpness">Strength of the sharpening pass (0.00–2.00). Only used when sharpening is ON.</string>
-    <string name="param_desc_display_stretch">Stretches the picture to fill the whole screen, ignoring the aspect ratio (removes the side black bars on wide screens). The image will look horizontally stretched. Takes effect on the next launch.</string>
+    <string name="param_desc_display_stretch">How the picture fills the screen: Fit keeps the aspect ratio and leaves black bars; Stretch fills the screen but distorts the picture; Crop to fill keeps the aspect ratio, scales the picture until it covers the whole screen and crops the overflow (no bars, no distortion, some edge vision is lost). Takes effect on the next launch.</string>
     <string name="param_skip_animations">Skip animations</string>
     <string name="param_desc_skip_animations">Skips the intro logos and opening videos, and lets you skip any in-game video with the X button. Same switches as the Patches page.</string>
 
@@ -165,6 +170,34 @@
     <string name="param_category_graphics">GRAPHICS</string>
     <string name="param_category_performance">PERFORMANCE</string>
     <string name="param_category_controls">CONTROLS</string>
+
+    <!-- 按键映射卡片与页面（add-pad-button-mapping；PS 按钮名符号用 Unicode） -->
+    <string name="pad_mapping_title">Button Mapping</string>
+    <string name="pad_mapping_desc">Remap the physical gamepad buttons to game buttons. Bindings apply when the next game session starts.</string>
+    <string name="pad_mapping_custom">CUSTOMIZE</string>
+    <string name="pad_mapping_hint_idle">Tap a game button, then press a pad button or trigger to bind. Tap here to cancel.</string>
+    <string name="pad_mapping_hint_capture">Press a pad button or trigger… tap here to cancel</string>
+    <string name="pad_mapping_restore">Restore defaults</string>
+    <string name="pad_mapping_done">Done</string>
+    <string name="pad_mapping_restored">Button mapping restored to defaults</string>
+    <string name="pad_mapping_default_fmt">Default: %1$s</string>
+    <string name="pad_mapping_unbound">Unbound</string>
+    <string name="pad_button_cross">✕ Cross</string>
+    <string name="pad_button_circle">○ Circle</string>
+    <string name="pad_button_square">□ Square</string>
+    <string name="pad_button_triangle">△ Triangle</string>
+    <string name="pad_button_l1">L1</string>
+    <string name="pad_button_r1">R1</string>
+    <string name="pad_button_l2">L2</string>
+    <string name="pad_button_r2">R2</string>
+    <string name="pad_button_l3">L3</string>
+    <string name="pad_button_r3">R3</string>
+    <string name="pad_button_options">OPTIONS</string>
+    <string name="pad_button_touchpad">Touchpad</string>
+    <string name="pad_button_up">D-Pad Up</string>
+    <string name="pad_button_down">D-Pad Down</string>
+    <string name="pad_button_left">D-Pad Left</string>
+    <string name="pad_button_right">D-Pad Right</string>
     <string name="param_category_audio">AUDIO</string>
     <string name="param_category_driver">DRIVER</string>
 

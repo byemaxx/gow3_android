@@ -282,6 +282,7 @@ const char* UpscalerLabel(int upscaler) {
     case Gow3Settings::UpscalerFsr411: return "FSR 4.1.1";
     case Gow3Settings::UpscalerTaa: return "TAA";
     case Gow3Settings::UpscalerDlss: return "DLSS";
+    case Gow3Settings::UpscalerGsr2: return "GSR 2";
     default: return "";
     }
 }
@@ -453,7 +454,7 @@ void PerformanceTab() {
     }
     ImGui::SeparatorText("Applied on restart");
     if (BeginRows("##restart")) {
-        static const char* const resolution_labels[] = {"Native (1080p)", "480p", "720p", "800p", "1440p", "1800p", "4K", "540p", "900p", "1080p"};
+        static const char* const resolution_labels[] = {"Native (1080p)", "854×480", "960×540", "1280×720", "1600×900", "1920×1080", "2560×1440", "3200×1800", "3840×2160"};
         static_assert(std::size(resolution_labels) == G::Resolutions.size());
         ChoiceRow("Render resolution", s.render_resolution, resolution_labels, nullptr, int(G::Resolutions.size()),
                   "The resolution the game draws at. Higher is sharper and slower.");

@@ -8,6 +8,7 @@
 #include <unordered_map>
 #ifndef _WIN32
 #include <dlfcn.h>
+#include <pthread.h>
 #endif
 #include <functional>
 
@@ -37,6 +38,9 @@ Scheduler::Scheduler(const Instance& instance, bool threaded_recording)
         recorder_thread = std::jthread(std::bind_front(&Scheduler::RecorderThread, this));
         recording_threaded = true;
     }
+    // GPU breadcrumbs：每个 scheduler 是一个命令流（vk_breadcrumbs.h）。
+    crumb_stream = Breadcrumbs::NewStream(
+        instance, recording_threaded ? "game draws and composition" : "presentation");
 #if TRACY_GPU_ENABLED
     profiler_scope = reinterpret_cast<tracy::VkCtxScope*>(std::malloc(sizeof(tracy::VkCtxScope)));
 #endif
@@ -359,7 +363,23 @@ void Scheduler::Wait(u64 tick, std::source_location caller, u64 submit_ns) {
     }
     Gow3Stats::WaitTimer timer{Gow3Stats::tick_wait_ns};
     const auto submitted = diagnose ? std::chrono::steady_clock::now() : start;
-    work_semaphore.Wait(tick);
+    // 卡死检测：等 5 秒还没到说明 GPU 可能挂死，先打印等待状态和 breadcrumbs 报告再继续等。
+    // 报告只打一次（ReportStuck 内部保证），继续等的部分保持原有阻塞语义。
+    if (!work_semaphore.WaitFor(tick, 5'000'000'000ull)) {
+#ifndef _WIN32
+        char thread[16] = {};
+        pthread_getname_np(pthread_self(), thread, sizeof(thread));
+        std::printf("GPU wait stalled 5 s on %s: tick %llu, GPU at %llu\n", thread,
+                    static_cast<unsigned long long>(tick),
+                    static_cast<unsigned long long>(work_semaphore.KnownGpuTick()));
+#else
+        std::printf("GPU wait stalled 5 s: tick %llu, GPU at %llu\n",
+                    static_cast<unsigned long long>(tick),
+                    static_cast<unsigned long long>(work_semaphore.KnownGpuTick()));
+#endif
+        Breadcrumbs::ReportStuck("a wait stalled 5 s");
+        work_semaphore.Wait(tick);
+    }
     if (diagnose) {
         const auto completed = std::chrono::steady_clock::now();
         WaitDiagnostics::Get().Add(caller.file_name(), caller.line(),
@@ -467,6 +487,9 @@ void Scheduler::SubmitExecution(SubmitInfo& info) {
 
     ImGui::Core::TextureManager::Submit();
     auto submit_result = instance.GetGraphicsQueue().submit(submit_info, info.fence);
+    if (submit_result == vk::Result::eErrorDeviceLost) {
+        Breadcrumbs::ReportDeviceLost("submit");
+    }
     ASSERT_MSG(submit_result != vk::Result::eErrorDeviceLost, "Device lost during submit");
 
     work_semaphore.Refresh();

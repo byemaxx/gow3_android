@@ -34,10 +34,12 @@ internal sealed interface SettingsEntry {
  * 各分类的功能卡 slot 声明，顺序即渲染顺序（渲染在参数行之前）。
  * `driver_manager` 由 add-android-launcher-driver-manager 落位（design D2），
  * 由 [DriverManagerCard] 提供内容；`storage` 由 redesign-android-launcher-home
- * 落位，提供游戏目录与升级补丁目录行；CONTROLS -> "pad_mapping" 等仍为预留示例。
+ * 落位，提供游戏目录与升级补丁目录行；`pad_mapping` 由 add-pad-button-mapping
+ * 落位，由 [PadMappingCard] 提供内容。
  */
 private val categoryCards: Map<LaunchCategory, List<String>> = mapOf(
     LaunchCategory.GENERAL to listOf("storage", "language"),
+    LaunchCategory.CONTROLS to listOf("pad_mapping"),
     LaunchCategory.DRIVER to listOf("driver_manager"),
 )
 

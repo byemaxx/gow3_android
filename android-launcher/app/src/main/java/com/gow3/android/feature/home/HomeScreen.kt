@@ -86,6 +86,10 @@ internal fun HomeScreen(
     wide: Boolean,
 ) {
     val context = LocalContext.current
+    // 组合作用域预解析文案：事件回调/Toast 内不得调用 stringResource（非组合上下文）。
+    val saveFailedMsg = stringResource(R.string.settings_save_failed)
+    val driverPickFmt = stringResource(R.string.driver_pick_selected_fmt)
+    val systemDriverName = stringResource(R.string.driver_card_system)
     var iniValues by remember { mutableStateOf(loadIni(context)) }
     var dllState by remember { mutableStateOf(losslessDlls.resolve()) }
     var gameDir by remember { mutableStateOf(currentGameDir(context)) }
@@ -156,7 +160,7 @@ internal fun HomeScreen(
             iniValues = loadIni(context)
             true
         } else {
-            Toast.makeText(context, context.getString(R.string.settings_save_failed), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, saveFailedMsg, Toast.LENGTH_SHORT).show()
             false
         }
     }
@@ -173,17 +177,21 @@ internal fun HomeScreen(
     /** 驱动选择：写 `gpu_driver=` 键（系统驱动写 auto），与 run-bionic.sh 的解析契约一致。 */
     fun selectDriver(id: String?, displayName: String) {
         if (saveUpdates(mapOf(DriverManager.INI_KEY to (id ?: DriverManager.SYSTEM_VALUE)))) {
-            toast(context.getString(R.string.driver_pick_selected_fmt, displayName))
+            toast(driverPickFmt.format(displayName))
         }
         driverRevision++
     }
 
     // 启动前置不再静默失败（spec：Game prerequisites are missing）：身份卡未就绪时
     // 给出与失败原因一致的引导提示，而不是无反应。
+    // 启动失败文案随 identity 派生（组合作用域解析，回调内只引用 val）。
+    val launchProblemMsg = (identity as? GameIdentityState.Failed)
+        ?.let { stringResource(GameIdentity.problemMessageRes(it.problem)) }
+
     fun launch() {
         when (val state = identity) {
             is GameIdentityState.Ready -> onStartGame()
-            is GameIdentityState.Failed -> toast(context.getString(GameIdentity.problemMessageRes(state.problem)))
+            is GameIdentityState.Failed -> launchProblemMsg?.let(::toast)
             GameIdentityState.Loading -> {}
         }
     }
@@ -216,11 +224,12 @@ internal fun HomeScreen(
                     // 面板只回传 id：展示名从扫描结果解析（系统驱动回退到本地化文案）。
                     onSelect = { id ->
                         val name = id?.let { picked -> driverEntries.firstOrNull { it.id == picked }?.name }
-                            ?: context.getString(R.string.driver_card_system)
+                            ?: systemDriverName
                         selectDriver(id, name)
                     },
                     onManageDrivers,
                 )
+                FpsLimitRow(iniValues) { saveUpdates(mapOf("fps_limit" to it)) }
                 SkipAnimationsCard(homeCatalog, iniValues, ::saveUpdates)
                 // gow3port: LSFG 运行时能力已废除（Bionic 迁移，见 openspec change
                 // migrate-android-runtime-to-bionic）。「Steam 下载 LSFG / 导入 LSFG」入口
@@ -238,11 +247,12 @@ internal fun HomeScreen(
                 // 面板只回传 id：展示名从扫描结果解析（系统驱动回退到本地化文案）。
                 onSelect = { id ->
                     val name = id?.let { picked -> driverEntries.firstOrNull { it.id == picked }?.name }
-                        ?: context.getString(R.string.driver_card_system)
+                        ?: systemDriverName
                     selectDriver(id, name)
                 },
                 onManageDrivers,
             )
+            FpsLimitRow(iniValues) { saveUpdates(mapOf("fps_limit" to it)) }
             SkipAnimationsCard(homeCatalog, iniValues, ::saveUpdates)
             Spacer(Modifier.height(6.dp))
             LaunchButton(::launch)
@@ -272,6 +282,7 @@ private fun FrameGenerationSection(
 ) {
     val cfg = com.gow3.android.core.settings.FrameGenSettings.read(gow3IniFile(context))
     val dllInstalled = dllState is com.gow3.android.data.session.LosslessDllState.Installed
+    val frameGenSaveFailedMsg = stringResource(R.string.frame_gen_save_failed)
     FrameGenerationCard(
         enabled = cfg.enabled,
         dllInstalled = dllInstalled,
@@ -285,7 +296,7 @@ private fun FrameGenerationSection(
                 onIniChanged()
             } else {
                 android.widget.Toast.makeText(
-                    context, context.getString(R.string.frame_gen_save_failed),
+                    context, frameGenSaveFailedMsg,
                     android.widget.Toast.LENGTH_SHORT).show()
             }
         },

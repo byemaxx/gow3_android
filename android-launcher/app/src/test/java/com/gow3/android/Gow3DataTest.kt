@@ -27,7 +27,8 @@ class Gow3DataTest {
         Gow3Data.prepare(files, defaults)
 
         assertEquals("save", File(files, "gow3data/user/savedata/1/CUSA01623/AUTOSAVE/data.bin").readText())
-        assertEquals("fps_limit=60\n", File(files, "gow3data/gow3.ini").readText())
+        // upscaler 键缺失被一次性迁移追加（超分默认关闭）
+        assertEquals("fps_limit=60\nupscaler=off\n", File(files, "gow3data/gow3.ini").readText())
         assertTrue(File(files, "gow3data/Lossless.dll").isFile)
         assertEquals("log", File(files, "gow3data/logs/android-game.log").readText())
         assertTrue(File(files, "gow3data/.data-schema").isFile)
@@ -44,7 +45,7 @@ class Gow3DataTest {
 
         Gow3Data.prepare(files, defaults)
 
-        assertEquals("new=1\n", File(files, "gow3data/gow3.ini").readText())
+        assertEquals("new=1\nupscaler=off\n", File(files, "gow3data/gow3.ini").readText())
     }
 
     @Test
@@ -54,7 +55,7 @@ class Gow3DataTest {
 
         Gow3Data.prepare(files, defaults)
 
-        assertEquals("fps_limit=30\n", Gow3Data.config(files).readText())
+        assertEquals("fps_limit=30\nupscaler=off\n", Gow3Data.config(files).readText())
         assertTrue(Gow3Data.user(files).isDirectory)
         assertTrue(Gow3Data.logs(files).isDirectory)
     }
@@ -75,7 +76,7 @@ class Gow3DataTest {
         val text = Gow3Data.config(files).readText()
         assertTrue(text.contains("show_fps=0"))
         assertFalse(text.contains("show_fps=1"))
-        assertTrue("其它键保留", text.contains("fps_limit=60\n") && text.contains("upscaler=fsr3\n"))
+        assertTrue("其它键保留", text.contains("fps_limit=60\n"))
         assertTrue("注释保留", text.contains("# base config\n") && text.contains("old default"))
     }
 
@@ -83,18 +84,17 @@ class Gow3DataTest {
     fun `prepare keeps config untouched when show_fps already off or absent`() {
         val files = tempDir()
         val ini = File(files, "gow3port").apply { mkdirs() }.resolve("gow3.ini")
-        // 已为 0：不触碰文件（幂等）
+        // 已为 0：show_fps 不再触碰；upscaler 键缺失被迁移追加
         ini.writeText("fps_limit=60\nshow_fps=0\n")
-        val before = ini.readText()
         Gow3Data.prepare(files, null)
-        assertEquals(before, File(files, "gow3data/gow3.ini").readText())
+        assertEquals("fps_limit=60\nshow_fps=0\nupscaler=off\n",
+            File(files, "gow3data/gow3.ini").readText())
 
-        // 键缺失：保持缺省（运行时默认即关），不新增行
         val files2 = tempDir()
         val ini2 = File(files2, "gow3port").apply { mkdirs() }.resolve("gow3.ini")
         ini2.writeText("fps_limit=30\n")
         Gow3Data.prepare(files2, null)
-        assertEquals("fps_limit=30\n", File(files2, "gow3data/gow3.ini").readText())
+        assertEquals("fps_limit=30\nupscaler=off\n", File(files2, "gow3data/gow3.ini").readText())
     }
 
     @Test
@@ -108,5 +108,44 @@ class Gow3DataTest {
         val text = Gow3Data.config(files).readText()
         assertTrue("前缀相似键不受影响", text.contains("show_fps_note=keep\n"))
         assertTrue(text.contains("show_fps=0\n"))
+    }
+
+    // ---- 一次性迁移：超分默认关闭，upscaler 一律改写为 off（change replace-android-fsr3-with-gsr2）----
+
+    @Test
+    fun `prepare rewrites upscaler fsr3 to off once keeping other lines`() {
+        val files = tempDir()
+        val legacy = File(files, "gow3port").apply { mkdirs() }
+        File(legacy, "gow3.ini").writeText(
+            "# header\nupscaler=fsr3 ; my choice\nfps_limit=60\n"
+        )
+
+        Gow3Data.prepare(files, null)
+
+        val text = Gow3Data.config(files).readText()
+        assertEquals("# header\nupscaler=off ; my choice\nfps_limit=60\n", text)
+        assertTrue(File(files, "gow3data/upscaler_default_off").isFile)
+    }
+
+    @Test
+    fun `upscaler migration never rewrites after the marker`() {
+        val files = tempDir()
+        val legacy = File(files, "gow3port").apply { mkdirs() }
+        File(legacy, "gow3.ini").writeText("upscaler=fsr3\n")
+        Gow3Data.prepare(files, null)
+        // 玩家手动改回 fsr3 后再次 prepare：不再被覆盖
+        Gow3Data.config(files).writeText("upscaler=fsr3\n")
+        Gow3Data.prepare(files, null)
+        assertEquals("upscaler=fsr3\n", Gow3Data.config(files).readText())
+    }
+
+    @Test
+    fun `upscaler migration is idempotent when already off`() {
+        val files = tempDir()
+        val legacy = File(files, "gow3port").apply { mkdirs() }
+        File(legacy, "gow3.ini").writeText("upscaler=off\nfps_limit=60\n")
+        Gow3Data.prepare(files, null)
+        assertEquals("upscaler=off\nfps_limit=60\n", Gow3Data.config(files).readText())
+        assertTrue(File(files, "gow3data/upscaler_default_off").isFile)
     }
 }

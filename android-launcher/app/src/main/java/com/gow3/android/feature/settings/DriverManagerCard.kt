@@ -63,6 +63,10 @@ internal fun DriverManagerCard(
     onIniChanged: () -> Unit,
 ) {
     val context = LocalContext.current
+    // 组合作用域预解析（回调内不得调用 stringResource）。
+    val doneFmt = stringResource(R.string.driver_dl_done_fmt)
+    val deletedFmt = stringResource(R.string.driver_manager_deleted_fmt)
+    val deletedFallbackFmt = stringResource(R.string.driver_manager_deleted_fallback_fmt)
     val scope = rememberCoroutineScope()
     var entries by remember { mutableStateOf<List<DriverEntry>>(emptyList()) }
     var pendingDelete by remember { mutableStateOf<DriverEntry?>(null) }
@@ -99,7 +103,7 @@ internal fun DriverManagerCard(
                     is DriverInstallResult.Success ->
                         Toast.makeText(
                             context,
-                            context.getString(R.string.driver_dl_done_fmt, install.name),
+                            doneFmt.format(install.name),
                             Toast.LENGTH_SHORT,
                         ).show()
                     is DriverInstallResult.Failed ->
@@ -118,10 +122,7 @@ internal fun DriverManagerCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(LauncherColors.navSurface)
-            .border(BorderStroke(1.dp, LauncherColors.gold.copy(alpha = 0.35f)), RoundedCornerShape(10.dp))
-            .padding(12.dp),
+            .background(LauncherColors.navSurface),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -212,11 +213,7 @@ internal fun DriverManagerCard(
                         is DriverDeleteResult.Done ->
                             Toast.makeText(
                                 context,
-                                context.getString(
-                                    if (result.wasSelected) R.string.driver_manager_deleted_fallback_fmt
-                                    else R.string.driver_manager_deleted_fmt,
-                                    entry.name,
-                                ),
+                                (if (result.wasSelected) deletedFallbackFmt else deletedFmt).format(entry.name),
                                 Toast.LENGTH_SHORT,
                             ).show()
                         is DriverDeleteResult.Rejected ->

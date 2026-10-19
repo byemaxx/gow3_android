@@ -6,13 +6,14 @@ import android.view.SurfaceHolder;
 /**
  * The Bionic game process's frame path (tools/android/present/gow3_present_proto.h): libgow3present.so
  * listens on a unix socket, receives AHardwareBuffers from the game and shows them on the
- * SurfaceView with an ASurfaceControl, either scaled to fit (default) or stretched to fill the
- * window when the gow3.ini display_stretch option is on. The game stays connected while the
- * surface comes and goes: with no surface its frames are dropped, with a new one they show again.
+ * SurfaceView with an ASurfaceControl. Display mode (gow3.ini display_stretch, read by GameActivity
+ * and passed at start): 0 = scale to fit (letterboxed), 1 = stretch to fill (aspect ignored),
+ * 2 = crop to fill (aspect kept, overflow cropped). The game stays connected while the surface
+ * comes and goes: with no surface its frames are dropped, with a new one they show again.
  */
 public final class Gow3Present {
     static { System.loadLibrary("gow3present"); }
-    private static native String nativeStart(String socketPath, boolean stretch);
+    private static native String nativeStart(String socketPath, int mode);
     private static native void nativeSetSurface(Surface surface);
     private static native long nativeFrames();
     private static native void nativeShutdown();
@@ -20,10 +21,10 @@ public final class Gow3Present {
     private static SurfaceHolder.Callback callback;
     private static SurfaceHolder attached;
 
-    /** Listens on socketPath (once) and shows the game on this surface until it is destroyed;
-     *  stretch=true stretches frames to fill the window (gow3.ini display_stretch=1). */
-    public static synchronized String start(SurfaceHolder holder, String socketPath, boolean stretch) {
-        String result = nativeStart(socketPath, stretch);
+    /** Listens on socketPath (once) and shows the game on this surface until it is destroyed.
+     *  mode: 0 = fit (letterbox), 1 = stretch (aspect ignored), 2 = crop to fill (aspect kept). */
+    public static synchronized String start(SurfaceHolder holder, String socketPath, int mode) {
+        String result = nativeStart(socketPath, mode);
         used = true;
         if (!result.equals("present running")) return result;
         if (attached != null && callback != null) attached.removeCallback(callback);
