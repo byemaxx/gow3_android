@@ -25,6 +25,7 @@ stamp=out/debug/runtime.bionic.inputs
 # Every file that ends up in the payload. Missing entries are recorded too, so a payload is never
 # reused after an input disappears.
 inputs=(
+    tools/android/debug/stage_bionic_runtime.sh
     "$out/bin/gow3-probe"
     "$out/bin/kgsl-chip-id"
     "$out/lib/libgow3cpu.so"
